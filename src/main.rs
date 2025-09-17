@@ -1,10 +1,14 @@
 use std::io::{Stdin, Stdout, Write};
-use std::io::ErrorKind::AddrNotAvailable;
-use std::thread::available_parallelism;
+use std::num::ParseIntError;
 
 struct Topping {
     name: String,
     price: u32
+}
+
+struct Pizza {
+    name: String,
+    toppings: Vec<Topping>
 }
 
 impl Clone for Topping {
@@ -26,6 +30,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Topping { name: String::from("Bacon"), price: 3 }
     ];
 
+    let pizzas = vec! [
+        Pizza {
+            name: String::from("Margherita"),
+            toppings: Vec::new()
+        },
+        Pizza {
+            name: String::from("Pepperoni"),
+            toppings: vec! [
+                Topping { name: String::from("Pepperoni"), price: 8 }
+            ]
+        },
+        Pizza {
+            name: String::from("Salami"),
+            toppings: vec! [
+                Topping { name: String::from("Salami"), price: 7 }
+            ]
+        },
+        Pizza {
+            name: String::from("Hawaii"),
+            toppings: vec! [
+                Topping { name: String::from("Pineapple"), price: 4},
+                Topping { name: String::from("Ham"), price: 5}
+            ]
+        }
+    ];
+
     writeln!(stdout, "Welcome to Salvatores Pizza!")?;
     writeln!(stdout, "1: Order Pizza")?;
     writeln!(stdout, "2: Quit")?;
@@ -37,32 +67,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     stdin.read_line(&mut input).unwrap();
 
     match input.trim() {
-        "1" => order_pizza(&mut stdout, &stdin, &toppings)?,
+        "1" => order_pizza(&mut stdout, &stdin, &toppings, &pizzas)?,
         &_ => writeln!(stdout, "Quit")?
     }
 
     Ok(())
 }
 
-fn order_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &Vec<Topping>) -> Result<(), Box<dyn std::error::Error>> {
+fn order_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &Vec<Topping>, prebuild_pizzas: &Vec<Pizza>) -> Result<(), Box<dyn std::error::Error>> {
 
     writeln!(stdout, "Pizza-Menu:")?;
-    writeln!(stdout, "1: Pizza-Margherita")?;
-    writeln!(stdout, "2: Pizza-Salami")?;
-    writeln!(stdout, "3: Pizza-Hawaii")?;
-    writeln!(stdout, "4: Pizza-Pepperoni")?;
-    writeln!(stdout, "C : Customize your own Pizza")?;
+    for (index, pizza) in prebuild_pizzas.iter().enumerate() {
+        writeln!(stdout, "{}: {}", index, &pizza.name)?;
+    }
+    writeln!(stdout, "C: Customize your own Pizza")?;
 
     let mut input = String::new();
     stdin.read_line(&mut input).unwrap();
 
     match input.trim() {
-        "1" => writeln!(stdout, "You ordered Margherita!")?,
-        "2" => writeln!(stdout, "You ordered Salami!")?,
-        "3" => writeln!(stdout, "You ordered Hawaii!")?,
-        "4" => writeln!(stdout, "You ordered Pepperoni!")?,
         "C" | "c" => order_custom_pizza(stdout, stdin, available_toppings)?,
-        &_ => writeln!(stdout, "Not in Menu.")?
+        value => {
+            match value.parse::<usize>() {
+                Ok(index) => {
+                    match prebuild_pizzas.get(index) {
+                        None => { writeln!(stdout, "unknown Menu-entry")?;}
+                        Some(pizza) => {
+                            let price: u32 = pizza.toppings.iter().map(| topping | topping.price).sum();
+                            writeln!(stdout, "Your choice: {} for {}.00$", pizza.name, price)?;
+                        }
+                    }
+                }
+                Err(_) => { writeln!(stdout, "Not in Menu.")? }
+            }
+
+        }
     }
     Ok(())
 }
@@ -70,7 +109,10 @@ fn order_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &Vec<Topp
 fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &Vec<Topping>) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut input = String::new();
-    let mut toppings = Vec::<Topping>::new();
+    let mut pizza = Pizza {
+        name: String::from("Custom"),
+        toppings: Vec::new()
+    };
 
     loop {
 
@@ -89,26 +131,28 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
                 let topping = available_toppings.iter()
                     .find(|topping| topping.name == "Bacon")
                     .expect("There must be bacon!");
-                toppings.push(Clone::clone(topping));
+                pizza.toppings.push(Clone::clone(topping));
             },
             "O" | "o" => {
                 writeln!(stdout, "You added Onions to your Pizza!")?;
                 let topping = available_toppings.iter()
                     .find(|topping| topping.name == "Onions")
                     .expect("There must be Onions!");
-                toppings.push(Clone::clone(topping));
+                pizza.toppings.push(Clone::clone(topping));
             },
             "M" | "m" => {
                 writeln!(stdout, "You added Mushrooms to your Pizza!")?;
                 let topping = available_toppings.iter()
                     .find(|topping| topping.name == "Mushrooms")
                     .expect("Dont eat the red ones!");
-                toppings.push(Clone::clone(topping));
+                pizza.toppings.push(Clone::clone(topping));
             },
              &_ => {
-                 writeln!(stdout, "Your toppings: {}", toppings.iter().map(|topping| topping.name.as_str()).collect::<Vec<&str>>().join(", "))?;
-                 let price: u32 = toppings.iter().map(|topping| topping.price).sum();
-                 writeln!(stdout, "Your price: {}", price)?;
+                 writeln!(stdout, "Your toppings: {}", pizza.toppings.iter().map(|topping| topping.name.as_str()).collect::<Vec<&str>>().join(", "))?;
+                 let price: u32 = pizza.toppings.iter()
+                     .map(|topping| topping.price)
+                     .sum();
+                 writeln!(stdout, "Your price: {}.00$", price)?;
                  break;
              }
         }
