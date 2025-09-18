@@ -28,6 +28,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Topping { name: String::from("Onions"), price: 2 },
         Topping { name: String::from("Bacon"), price: 3 },
         Topping { name: String::from("Ham"), price: 4 },
+        Topping { name: String::from("Corn"), price: 5},
+        Topping { name: String::from("Italian-Brocoli"), price: 3},
     ];
 
     let pizzas = vec! [
