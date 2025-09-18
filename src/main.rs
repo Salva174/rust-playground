@@ -5,9 +5,11 @@ struct Topping {
     price: u32
 }
 
-struct Pizza {
-    name: String,
-    toppings: Vec<Topping>
+impl Topping {
+
+    fn shortname(&self) -> char {
+        self.name.chars().next().expect("There must be a topping-name!")
+    }
 }
 
 impl Clone for Topping {
@@ -17,6 +19,11 @@ impl Clone for Topping {
             price: self.price
         }
     }
+}
+
+struct Pizza {
+    name: String,
+    toppings: Vec<Topping>
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -121,7 +128,7 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
         writeln!(stdout, "Choose your toppings:")?;
 
         for topping in available_toppings.iter() {
-            let shortname = topping.name.chars().next().expect("There must be a topping-name!");
+            let shortname = topping.shortname();
             let name = &topping.name;
             writeln!(stdout, "{shortname}: {name}")?;
         }
@@ -134,7 +141,7 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
 
         let mut selected_topping: Option<Topping> = None;
         for topping in available_toppings.iter() {
-            let shortname_uppercase = topping.name.chars().next().expect("There must be a topping-name!");
+            let shortname_uppercase = topping.shortname();
             let shortname_lowercase = shortname_uppercase.to_lowercase().next().unwrap();
             if shortname_uppercase == input || shortname_lowercase == input {
                 selected_topping = Some(Clone::clone(topping));
@@ -158,3 +165,4 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
 
     Ok(())
 }
+
