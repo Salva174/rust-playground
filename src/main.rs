@@ -1,5 +1,4 @@
 use std::io::{Stdin, Stdout, Write};
-use std::num::ParseIntError;
 
 struct Topping {
     name: String,
@@ -27,7 +26,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let toppings = vec! [
         Topping { name: String::from("Mushrooms"), price: 1 },
         Topping { name: String::from("Onions"), price: 2 },
-        Topping { name: String::from("Bacon"), price: 3 }
+        Topping { name: String::from("Bacon"), price: 3 },
+        Topping { name: String::from("Ham"), price: 4 },
     ];
 
     let pizzas = vec! [
@@ -61,10 +61,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(stdout, "2: Quit")?;
 
     write!(stdout, "> ")?;
-    stdout.flush();
+    stdout.flush()?;
 
     let mut input = String::new();
-    stdin.read_line(&mut input).unwrap();
+    stdin.read_line(&mut input)?;
 
     match input.trim() {
         "1" => order_pizza(&mut stdout, &stdin, &toppings, &pizzas)?,
@@ -120,6 +120,7 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
         writeln!(stdout, "B: Bacon")?;
         writeln!(stdout, "O: Onions")?;
         writeln!(stdout, "M: Mushrooms")?;
+        writeln!(stdout, "H: Ham")?;
         writeln!(stdout, "Q: Quit")?;
 
         input.clear();
@@ -147,6 +148,13 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
                     .expect("Dont eat the red ones!");
                 pizza.toppings.push(Clone::clone(topping));
             },
+            "H" | "h" => {
+                writeln!(stdout, "You added Ham to your Pizza!")?;
+                let topping = available_toppings.iter()
+                    .find(|topping | topping.name=="Ham")
+                    .expect("There must be Ham!");
+                pizza.toppings.push(Clone::clone(topping));
+            }
              &_ => {
                  writeln!(stdout, "Your toppings: {}", pizza.toppings.iter().map(|topping| topping.name.as_str()).collect::<Vec<&str>>().join(", "))?;
                  let price: u32 = pizza.toppings.iter()
