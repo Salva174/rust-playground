@@ -117,52 +117,39 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
     loop {
 
         writeln!(stdout, "Choose your toppings:")?;
-        writeln!(stdout, "B: Bacon")?;
-        writeln!(stdout, "O: Onions")?;
-        writeln!(stdout, "M: Mushrooms")?;
-        writeln!(stdout, "H: Ham")?;
+
+        for topping in available_toppings.iter() {
+            let shortname = topping.name.chars().next().expect("There must be a topping-name!");
+            let name = &topping.name;
+            writeln!(stdout, "{shortname}: {name}")?;
+        }
+
         writeln!(stdout, "Q: Quit")?;
 
         input.clear();
         stdin.read_line(&mut input).unwrap();
+        let input= input.trim().chars().next().expect("Input must not be empty!");
 
-        match input.trim() {
-            "B" | "b" => {
-                writeln!(stdout, "You added Bacon to your Pizza!")?;
-                let topping = available_toppings.iter()
-                    .find(|topping| topping.name == "Bacon")
-                    .expect("There must be bacon!");
-                pizza.toppings.push(Clone::clone(topping));
-            },
-            "O" | "o" => {
-                writeln!(stdout, "You added Onions to your Pizza!")?;
-                let topping = available_toppings.iter()
-                    .find(|topping| topping.name == "Onions")
-                    .expect("There must be Onions!");
-                pizza.toppings.push(Clone::clone(topping));
-            },
-            "M" | "m" => {
-                writeln!(stdout, "You added Mushrooms to your Pizza!")?;
-                let topping = available_toppings.iter()
-                    .find(|topping| topping.name == "Mushrooms")
-                    .expect("Dont eat the red ones!");
-                pizza.toppings.push(Clone::clone(topping));
-            },
-            "H" | "h" => {
-                writeln!(stdout, "You added Ham to your Pizza!")?;
-                let topping = available_toppings.iter()
-                    .find(|topping | topping.name=="Ham")
-                    .expect("There must be Ham!");
-                pizza.toppings.push(Clone::clone(topping));
+        let mut selected_topping: Option<Topping> = None;
+        for topping in available_toppings.iter() {
+            let shortname_uppercase = topping.name.chars().next().expect("There must be a topping-name!");
+            let shortname_lowercase = shortname_uppercase.to_lowercase().next().unwrap();
+            if shortname_uppercase == input || shortname_lowercase == input {
+                selected_topping = Some(Clone::clone(topping));
+                break;
             }
-             &_ => {
-                 writeln!(stdout, "Your toppings: {}", pizza.toppings.iter().map(|topping| topping.name.as_str()).collect::<Vec<&str>>().join(", "))?;
-                 let price: u32 = pizza.toppings.iter()
-                     .map(|topping| topping.price)
-                     .sum();
-                 writeln!(stdout, "Your price: {}.00$", price)?;
-                 break;
-             }
+        }
+
+        if let Some(topping) = selected_topping {
+            pizza.toppings.push(topping);
+        }
+        else {
+            writeln!(stdout, "Your toppings: {}", pizza.toppings.iter().map(|topping| topping.name.as_str()).collect::<Vec<&str>>().join(", "))?;
+            let price: u32 = pizza.toppings.iter()
+                .map(|topping| topping.price)
+                .sum();
+            writeln!(stdout, "Your price: {}.00$", price)?;
+            break;
         }
 
     }
