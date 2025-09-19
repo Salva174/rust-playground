@@ -1,20 +1,16 @@
 mod types;
 
 use std::io::{Stdin, Stdout, Write};
-use crate::types::{Pizza, Topping};
+use crate::types::{parse_toppings, Pizza, Topping};
+use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
     let stdin= std::io::stdin();
 
-    let toppings = vec! [
-        Topping { name: String::from("Mushrooms"), price: 1 },
-        Topping { name: String::from("Onions"), price: 2 },
-        Topping { name: String::from("Bacon"), price: 3 },
-        Topping { name: String::from("Ham"), price: 4 },
-        Topping { name: String::from("Corn"), price: 5},
-        Topping { name: String::from("Italian-Brocoli"), price: 3},
-    ];
+    let file_path = "pizza_text";
+    let content = fs::read_to_string(file_path).expect("There has to be text!");
+    let toppings = parse_toppings(content);
 
     let pizzas = vec! [
         Pizza {

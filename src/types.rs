@@ -1,6 +1,23 @@
 
+pub fn parse_toppings(content: String) -> Vec<Topping> {
 
+    let mut toppings  = Vec::<Topping>::new();
 
+    for line in content.split('\n') {
+        if line.trim().is_empty() {
+            continue
+        }
+        let mut split = line.split(' ');
+        let name = split.next().expect("There must be a topping name!");
+        let price_text = split.next().expect("There must be a topping price!");
+        let price = price_text.parse::<u32>().expect("Price must be a number!");
+        toppings.push(Topping { name: String::from(name), price });
+    }
+
+    toppings
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Topping {
     pub name: String,
     pub price: u32
@@ -67,5 +84,41 @@ mod tests {
         };
 
         assert_eq!(pizza.total_price(), 54);
+    }
+
+    #[test]
+    fn test_parse_toppings_from_empty_string() {
+
+        let toppings = parse_toppings(String::new());
+
+        assert_eq!(toppings, Vec::new())
+    }
+
+    #[test]
+    fn test_parse_toppings_from_string_with_single_topping() {
+
+        let toppings = parse_toppings(String::from(r#"
+Ham 8
+        "#));
+
+        assert_eq!(toppings, vec![
+            Topping { name: String::from("Ham"), price: 8 }
+        ])
+    }
+
+    #[test]
+    fn test_parse_toppings_from_string_with_multiple_toppings() {
+
+        let toppings = parse_toppings(String::from(r#"
+Ham 8
+Cheese 3
+Brocoli 4
+        "#));
+
+        assert_eq!(toppings, vec![
+            Topping { name: String::from("Ham"), price: 8 },
+            Topping { name: String::from("Cheese"), price: 3 },
+            Topping { name: String::from("Brocoli"), price: 4 },
+        ])
     }
 }
