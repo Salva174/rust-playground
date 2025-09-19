@@ -19,26 +19,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pizzas = vec! [
         Pizza {
             name: String::from("Margherita"),
-            toppings: Vec::new()
+            toppings: Vec::new(),
+            base_price: 4,
         },
         Pizza {
             name: String::from("Pepperoni"),
             toppings: vec! [
                 Topping { name: String::from("Pepperoni"), price: 8 }
-            ]
+            ],
+            base_price: 4,
         },
         Pizza {
             name: String::from("Salami"),
             toppings: vec! [
                 Topping { name: String::from("Salami"), price: 7 }
-            ]
+            ],
+            base_price: 4,
         },
         Pizza {
             name: String::from("Hawaii"),
             toppings: vec! [
                 Topping { name: String::from("Pineapple"), price: 4},
                 Topping { name: String::from("Ham"), price: 5}
-            ]
+            ],
+            base_price: 4,
         }
     ];
 
@@ -79,7 +83,7 @@ fn order_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &Vec<Topp
                     match prebuild_pizzas.get(index) {
                         None => { writeln!(stdout, "unknown Menu-entry")?;}
                         Some(pizza) => {
-                            let price: u32 = pizza.toppings.iter().map(| topping | topping.price).sum();
+                            let price: u32 = pizza.total_price();
                             writeln!(stdout, "Your choice: {} for {}.00$", pizza.name, price)?;
                         }
                     }
@@ -97,7 +101,8 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
     let mut input = String::new();
     let mut pizza = Pizza {
         name: String::from("Custom"),
-        toppings: Vec::new()
+        toppings: Vec::new(),
+        base_price: 8,
     };
 
     loop {
@@ -131,9 +136,7 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
         }
         else {
             writeln!(stdout, "Your toppings: {}", pizza.toppings.iter().map(|topping| topping.name.as_str()).collect::<Vec<&str>>().join(", "))?;
-            let price: u32 = pizza.toppings.iter()
-                .map(|topping| topping.price)
-                .sum();
+            let price: u32 = pizza.total_price();
             writeln!(stdout, "Your price: {}.00$", price)?;
             break;
         }
