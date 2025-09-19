@@ -1,30 +1,7 @@
+mod types;
+
 use std::io::{Stdin, Stdout, Write};
-
-struct Topping {
-    name: String,
-    price: u32
-}
-
-impl Topping {
-
-    fn shortname(&self) -> char {
-        self.name.chars().next().expect("There must be a topping-name!")
-    }
-}
-
-impl Clone for Topping {
-    fn clone(&self) -> Self {
-        Topping {
-            name: Clone::clone(&self.name),
-            price: self.price
-        }
-    }
-}
-
-struct Pizza {
-    name: String,
-    toppings: Vec<Topping>
-}
+use crate::types::{Pizza, Topping};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
