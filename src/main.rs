@@ -1,47 +1,21 @@
 mod types;
 
 use std::io::{Stdin, Stdout, Write};
-use crate::types::{parse_toppings, Pizza, Topping};
+use crate::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
 use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
     let stdin= std::io::stdin();
 
-    let file_path = "pizza_text";
-    let content = fs::read_to_string(file_path).expect("There has to be text!");
-    let toppings = parse_toppings(content);
+    let toppings_file_path = "pizza_toppings_text";
+    let content = fs::read_to_string(toppings_file_path).expect("There has to be text!");
+    let toppings = parse_toppings(&content)?;
 
-    let pizzas = vec! [
-        Pizza {
-            name: String::from("Margherita"),
-            toppings: Vec::new(),
-            base_price: 4,
-        },
-        Pizza {
-            name: String::from("Pepperoni"),
-            toppings: vec! [
-                Topping { name: String::from("Pepperoni"), price: 8 }
-            ],
-            base_price: 4,
-        },
-        Pizza {
-            name: String::from("Salami"),
-            toppings: vec! [
-                Topping { name: String::from("Salami"), price: 7 }
-            ],
-            base_price: 4,
-        },
-        Pizza {
-            name: String::from("Hawaii"),
-            toppings: vec! [
-                Topping { name: String::from("Pineapple"), price: 4},
-                Topping { name: String::from("Ham"), price: 5}
-            ],
-            base_price: 4,
-        }
-    ];
-
+    let prebuild_pizza_file_path ="pizza_prebuilds_text";
+    let prebuild_content = fs::read_to_string(prebuild_pizza_file_path).expect("There has to be text!");
+    let pizzas = parse_prebuild_pizza(&prebuild_content, &toppings)?;
+    
     writeln!(stdout, "Welcome to Salvatores Pizza!")?;
     writeln!(stdout, "1: Order Pizza")?;
     writeln!(stdout, "2: Quit")?;
