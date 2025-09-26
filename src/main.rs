@@ -1,9 +1,11 @@
 mod types;
 mod console;
+mod admin;
 
 use std::io::{Stdin, Stdout, Write};
 use crate::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
 use std::fs;
+use crate::admin::toppings::edit_toppings;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
@@ -23,7 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let panel = console::Menu::new(title_text, vec![
         String::from("1: Order Pizza"),
-        String::from("2: Quit"),
+        String::from("2: Edit Toppings"),
+        String::from("3: Quit"),
     ]);
     writeln!(stdout, "{panel}")?;
 
@@ -38,13 +41,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match input.trim() {
         "1" => order_pizza(&mut stdout, &stdin, &toppings, &pizzas)?,
+        "2" => edit_toppings(&mut stdout, &stdin)?,
         &_ => writeln!(stdout, "Quit")?
     }
 
     Ok(())
 }
 
-fn order_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &Vec<Topping>, prebuild_pizzas: &Vec<Pizza>) -> Result<(), Box<dyn std::error::Error>> {
+fn order_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &[Topping], prebuild_pizzas: &[Pizza]) -> Result<(), Box<dyn std::error::Error>> {
 
     let title_text = String::from("Pizza-Menu");
     let mut menu_entries = Vec::<String>::new();
@@ -80,7 +84,7 @@ fn order_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &Vec<Topp
     Ok(())
 }
 
-fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &Vec<Topping>) -> Result<(), Box<dyn std::error::Error>> {
+fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &[Topping]) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut input = String::new();
     let mut pizza = Pizza {
@@ -128,7 +132,7 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &V
             let mut topping_entries = Vec::<String>::new();
 
             for topping in pizza.toppings.iter() {
-                topping_entries.push(format!("{}", topping.name))
+                topping_entries.push(topping.name.to_string())
             }
 
             let panel = console::Menu::new(title_text, topping_entries);

@@ -54,7 +54,6 @@ impl Display for Menu {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
     use crate::console::Menu;
 
     #[test]
