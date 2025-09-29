@@ -1,6 +1,8 @@
 mod types;
 mod console;
 mod admin;
+mod table;
+mod table_menu;
 
 use std::io::{Stdin, Stdout, Write};
 use crate::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
