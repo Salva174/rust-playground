@@ -8,6 +8,8 @@ use std::io::{Stdin, Stdout, Write};
 use crate::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
 use std::fs;
 use crate::admin::toppings::edit_toppings;
+use crate::table::{Table, TableCell, TableRow};
+use crate::table_menu::TableMenu;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
@@ -25,12 +27,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let title_text = String::from("Welcome to Salvatores Pizza!");
 
-    let panel = console::Menu::new(title_text, vec![
-        String::from("1: Order Pizza"),
-        String::from("2: Edit Toppings"),
-        String::from("3: Quit"),
+    let table = Table::new(vec! [
+        TableRow::new( vec! [
+            TableCell::new(String::from("1:")),
+            TableCell::new(String::from("Order Pizza"))
+        ]),
+        TableRow::new( vec! [
+            TableCell::new(String::from("2:")),
+            TableCell::new(String::from("Edit Toppings"))
+        ]),
+        TableRow::new( vec! [
+            TableCell::new(String::from("3:")),
+            TableCell::new(String::from("Quit"))
+        ])
     ]);
-    writeln!(stdout, "{panel}")?;
+
+    let table_menu = TableMenu::new(title_text, table);
+    println!("{table_menu}");
+
+    // let panel = console::Menu::new(title_text, vec![
+    //     String::from("1: Order Pizza"),
+    //     String::from("2: Edit Toppings"),
+    //     String::from("3: Quit"),
+    // ]);
+    // writeln!(stdout, "{panel}")?;
 
 
     write!(stdout, "> ")?;
@@ -53,14 +73,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn order_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &[Topping], prebuild_pizzas: &[Pizza]) -> Result<(), Box<dyn std::error::Error>> {
 
     let title_text = String::from("Pizza-Menu");
-    let mut menu_entries = Vec::<String>::new();
+    let mut table = Table::new(vec![]);
     for (index, pizza) in prebuild_pizzas.iter().enumerate() {
         let pizza = &pizza.name;
-        menu_entries.push(format!("{index}: {pizza}"))
+        table.push(TableRow::new(vec![
+            TableCell::new(format!("{index}:")),
+            TableCell::new(String::from(pizza))
+        ]))
     }
-    menu_entries.push(String::from("C: Customize your own Pizza"));
-    let panel = console::Menu::new(title_text, menu_entries);
-    writeln!(stdout, "{panel}")?;
+    table.push(TableRow::new( vec! [
+        TableCell::new(String::from("C:")),
+        TableCell::new(String::from("Customize your own Pizza"))
+    ]));
+
+    let table_menu = TableMenu::new(title_text, table);
+    println!("{table_menu}");
+
+    write!(stdout, "> ")?;
+    stdout.flush()?;
+
 
     let mut input = String::new();
     stdin.read_line(&mut input).unwrap();
@@ -99,16 +130,20 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &[
         clear_screen(stdout)?;
 
         let title_text = String::from("Choose your toppings");
-        let mut menu_entries = Vec::<String>::new();
+        let mut table = Table::new(vec![]);
 
         for topping in available_toppings.iter() {
             let shortname = topping.shortname();
             let name = &topping.name;
-            menu_entries.push(format!("{shortname}: {name}"))
+            let price = &topping.price;
+            table.push(TableRow::new( vec![
+                TableCell::new(format!("{shortname}:")),
+                TableCell::new(name.to_string()),
+                TableCell::new(format!("{price}.00$"))
+            ]))
         }
-        let panel = console::Menu::new(title_text, menu_entries);
-        writeln!(stdout, "{panel}")?;
-
+        let table_menu = TableMenu::new(title_text, table);
+        println!("{table_menu}");
         writeln!(stdout, "Q: Quit")?;
 
         input.clear();
@@ -131,15 +166,19 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &[
         else {
             clear_screen(stdout)?;
             let title_text = String::from("Your toppings");
-            let mut topping_entries = Vec::<String>::new();
+            let mut topping_entries_table = Table::new(vec![]);
 
             for topping in pizza.toppings.iter() {
-                topping_entries.push(topping.name.to_string())
+                topping_entries_table.push(TableRow::new(vec![
+                    TableCell::new(topping.name.to_string()),
+                    TableCell::new(String::from("=")),
+                    TableCell::new(format!("{}.00$", topping.price))
+                ]));
             }
 
-            let panel = console::Menu::new(title_text, topping_entries);
-            writeln!(stdout, "{panel}")?;
-            writeln!(stdout, "Your price: {}.00$", pizza.total_price())?;
+            let table_menu = TableMenu::new(title_text, topping_entries_table);
+            println!("{table_menu}");
+            writeln!(stdout, "Your price: \x1b[4;30m{}.00$\x1b[0m", pizza.total_price())?;
 
             break;
         }

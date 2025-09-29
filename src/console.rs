@@ -52,6 +52,8 @@ impl Display for Menu {
     }
 }
 
+//ToDo: move tests to table_menu.rs
+
 #[cfg(test)]
 mod tests {
     use crate::console::Menu;

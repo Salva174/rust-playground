@@ -17,7 +17,7 @@ impl Display for TableMenu {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut table_buffer = String::new();
         render_table(&self.table, &mut table_buffer);
-        let mut max_length = max(
+        let max_length = max(
             self.title.len(),
             table_buffer.split('\n').next().unwrap_or_default().len()
         );
@@ -40,7 +40,7 @@ impl Display for TableMenu {
         for table_line in table_buffer.split("\n") {
             if !table_line.is_empty() {
                 let padding_size = max_length - table_line.len();
-                let padding = "+".repeat(padding_size);
+                let padding = " ".repeat(padding_size);
                 writeln!(f, "│  {table_line}{padding}  │")?;
             }
         }

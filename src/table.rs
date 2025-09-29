@@ -1,5 +1,3 @@
-use std::process::Termination;
-
 pub struct Table {
     rows: Vec<TableRow>,
 }
@@ -7,6 +5,14 @@ pub struct Table {
 impl Table {
     pub fn new(rows: Vec<TableRow>) -> Self {
         Self { rows }
+    }
+
+    pub fn push(&mut self, row: TableRow) {
+        self.rows.push(row)
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
     }
 }
 

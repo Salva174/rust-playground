@@ -1,7 +1,9 @@
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::{BufWriter, BufRead, Stdin, Stdout, Write};
-use crate::{clear_screen, console};
+use crate::clear_screen;
+use crate::table::{Align, Table, TableCell, TableRow};
+use crate::table_menu::TableMenu;
 
 pub fn edit_toppings(stdout: &mut Stdout, stdin: &Stdin) -> Result<(), Box<dyn std::error::Error>> {
 
@@ -122,8 +124,7 @@ fn list_toppings(path: &str) -> io::Result<()> {
     let reader = io::BufReader::new(file);
 
     let title_text = String::from("Aktuelle Toppings");
-    let mut names = Vec::<String>::new();
-    let mut prices = Vec::<String>::new();
+    let mut table = Table::new( vec![]);
 
     for (index, line) in reader.lines().enumerate() {
         let line = line?;
@@ -132,40 +133,29 @@ fn list_toppings(path: &str) -> io::Result<()> {
         }
 
         let parts: Vec<&str> = line.split('#').collect();
-        if parts.len() == 2 {
-            names.push(format!("{}. {}", index + 1, parts[0]));
-            prices.push(format!("{}.00$", parts[1]));
-        } else {
-            names.push(format!("{}. {}", index + 1, line));
-            prices.push(String::new());
+        if !parts.is_empty() {
+            table.push(TableRow::new(vec![
+                TableCell::new(format!("{}.", index + 1)),
+                TableCell::new(parts[0].to_string()),
+                TableCell::new_with_alignment(format!("{}.00$", parts[1]), Align::Right)
+            ]));
         }
     }
 
-    if names.is_empty() {
-        let menu = console::Menu::new(
-            title_text,
-            vec![String::from("Noch keine Toppings vorhanden!")]
-        );
-        println!("{menu}");
+    if table.is_empty() {
+        let table = Table::new(vec![
+            TableRow::new(vec![
+                TableCell::new(String::from("Noch keine Toppings vorhanden!"))
+            ])
+        ]);
+        let table_menu = TableMenu::new(title_text, table);
+        println!("{table_menu}");
         return Ok(());
     }
 
-    let max_name_len = names.iter().map(|n| n.len()).max().unwrap_or(0);
-    let max_price_len = prices.iter().map(|p| p.len()).max().unwrap_or(0);
+    let table_menu = TableMenu::new(title_text, table);
+    println!("{table_menu}");
 
-    let entries: Vec<String> = names
-        .into_iter()
-        .zip(prices.into_iter())
-        .map(|(name, price)| {
-            let name_padding_size  = max_name_len - name.len() + 2;
-            let price_padding_size = max_price_len - price.len();
-            let padding = " ".repeat(name_padding_size + price_padding_size);
-            format!("{name}{padding}{price}")
-        })
-        .collect();
-
-    let menu = console::Menu::new(title_text, entries);
-    println!("{menu}");
 
     Ok(())
 }
