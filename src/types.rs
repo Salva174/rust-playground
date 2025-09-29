@@ -9,7 +9,7 @@ pub fn parse_toppings(content: &str) -> Result<Vec<Topping>, String> {
             continue;
         }
 
-        let mut split = line.split_whitespace();
+        let mut split = line.split('#');
         let name = split
             .next()
             .ok_or_else(|| format!("Zeile {}: Topping-Name fehlt", lineno + 1))?;
@@ -42,8 +42,8 @@ pub fn parse_prebuild_pizza(content: &str, available: &[Topping]) -> Result<Vec<
             continue;
         }
 
-        // Format: <Pizza-Name> <Topping1|Topping2|…> <Basispreis>                                      //Topping muss in "pizza_toppings_text" enthalten sein!
-        let mut split = line.split_whitespace();
+        // Format: <Pizza-Name>#<Topping1|Topping2|…>#<Basispreis>                                      //Topping muss in "pizza_toppings_text" enthalten sein!
+        let mut split = line.split('#');
         let name = split
             .next()
             .ok_or_else(|| format!("Zeile {}: Pizza-Name fehlt", lineno + 1))?;

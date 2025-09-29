@@ -1,7 +1,7 @@
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::{BufWriter, BufRead, Stdin, Stdout, Write};
-use crate::clear_screen;
+use crate::{clear_screen, console};
 
 pub fn edit_toppings(stdout: &mut Stdout, stdin: &Stdin) -> Result<(), Box<dyn std::error::Error>> {
 
@@ -99,12 +99,12 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &Stdin) -> Result<(), Box<dyn s
         };
 
         //In Datei schreiben
-        let topping_name_no_whitespace = topping_name.replace(" ", "");
-        writeln!(writer, "{} {}", topping_name_no_whitespace, topping_price)?;
+        // let topping_name_no_whitespace = topping_name.replace(" ", "");
+        writeln!(writer, "{}#{}", topping_name, topping_price)?;
         writer.flush()?;
 
         clear_screen(stdout)?;
-        writeln!(stdout, "Erfolgreich hinzugefügt: \x1b[1;32m{} {}\x1b[0m", topping_name_no_whitespace, topping_price)?;
+        writeln!(stdout, "Erfolgreich hinzugefügt: \x1b[1;32m{} {}\x1b[0m", topping_name, topping_price)?;
     }
 }
 
@@ -120,29 +120,52 @@ fn prompt(stdin: &Stdin, stdout: &mut Stdout, label: &str) -> io::Result<String>
 fn list_toppings(path: &str) -> io::Result<()> {
     let file = File::open(path)?;
     let reader = io::BufReader::new(file);
-    let mut found_any = false;
 
-    println!("\x1b[4;34mAktuelle Toppings:\x1b[0m");
+    let title_text = String::from("Aktuelle Toppings");
+    let mut names = Vec::<String>::new();
+    let mut prices = Vec::<String>::new();
 
-    for (i,  line) in reader.lines().enumerate() {
+    for (index, line) in reader.lines().enumerate() {
         let line = line?;
         if line.trim().is_empty() {
             continue;
         }
-        found_any = true;
 
-        let parts: Vec<&str> = line.split(' ').collect();
+        let parts: Vec<&str> = line.split('#').collect();
         if parts.len() == 2 {
-            println!("{}. {} ({}.00$)", i + 1, parts[0], parts[1]);
+            names.push(format!("{}. {}", index + 1, parts[0]));
+            prices.push(format!("{}.00$", parts[1]));
         } else {
-            println!("{}. {}", i + 1, line); //falls format nicht stimmt
+            names.push(format!("{}. {}", index + 1, line));
+            prices.push(String::new());
         }
     }
 
-    if !found_any {
-        let output = "Noch keine Toppings vorhanden!";
-        println!("\x1b[0;33m{}\x1b[0m", output);
+    if names.is_empty() {
+        let menu = console::Menu::new(
+            title_text,
+            vec![String::from("Noch keine Toppings vorhanden!")]
+        );
+        println!("{menu}");
+        return Ok(());
     }
+
+    let max_name_len = names.iter().map(|n| n.len()).max().unwrap_or(0);
+    let max_price_len = prices.iter().map(|p| p.len()).max().unwrap_or(0);
+
+    let entries: Vec<String> = names
+        .into_iter()
+        .zip(prices.into_iter())
+        .map(|(name, price)| {
+            let name_padding_size  = max_name_len - name.len() + 2;
+            let price_padding_size = max_price_len - price.len();
+            let padding = " ".repeat(name_padding_size + price_padding_size);
+            format!("{name}{padding}{price}")
+        })
+        .collect();
+
+    let menu = console::Menu::new(title_text, entries);
+    println!("{menu}");
 
     Ok(())
 }
