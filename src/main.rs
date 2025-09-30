@@ -1,14 +1,11 @@
-mod types;
-mod admin;
-mod table;
-mod table_menu;
-
 use std::io::{Stdin, Stdout, Write};
-use crate::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
+
 use std::fs;
-use crate::admin::toppings::edit_toppings;
-use crate::table::{Table, TableCell, TableRow};
-use crate::table_menu::TableMenu;
+use pizzeria_lib::admin::toppings::edit_toppings;
+use pizzeria_lib::clear_screen;
+use pizzeria_lib::table::{Table, TableCell, TableRow};
+use pizzeria_lib::table_menu::TableMenu;
+use pizzeria_lib::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
@@ -43,14 +40,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let table_menu = TableMenu::new(title_text, table);
     println!("{table_menu}");
-
-    // let panel = console::Menu::new(title_text, vec![
-    //     String::from("1: Order Pizza"),
-    //     String::from("2: Edit Toppings"),
-    //     String::from("3: Quit"),
-    // ]);
-    // writeln!(stdout, "{panel}")?;
-
 
     write!(stdout, "> ")?;
     stdout.flush()?;
@@ -187,7 +176,3 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &[
     Ok(())
 }
 
-fn clear_screen(stdout: &mut Stdout) -> Result<(), Box<dyn std::error::Error>> {
-    write!(stdout, "\x1B[2J\x1B[1;1H")?;
-    Ok(())
-}

@@ -7,22 +7,30 @@ impl Table {
         Self { rows }
     }
 
+    pub fn rows_mut(&mut self) -> &mut[TableRow] {
+        self.rows.as_mut_slice()
+    }
+
     pub fn push(&mut self, row: TableRow) {
         self.rows.push(row)
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty()
     }
 }
 
 pub struct TableRow {
-    columns: Vec<TableCell>,
+    cells: Vec<TableCell>,
 }
 
 impl TableRow {
-    pub fn new(columns: Vec<TableCell>) -> Self {
-        Self { columns }
+    pub fn new(cells: Vec<TableCell>) -> Self {
+        Self { cells }
+    }
+
+    pub fn cells_mut(&mut self) -> &mut[TableCell] {
+        self.cells.as_mut_slice()
     }
 }
 
@@ -38,6 +46,10 @@ impl TableCell {
     pub fn new_with_alignment(text: String, align: Align) -> Self {
         Self { text, align }
     }
+
+    pub fn text_mut(&mut self) -> &mut String {
+        &mut self.text
+    }
 }
 
 pub enum Align {
@@ -49,7 +61,7 @@ pub fn render_table(table: &Table, buffer: &mut String) {
 
     let mut columns_width = Vec::<usize>::new();
     for row in table.rows.iter() {
-        for (index, column) in row.columns.iter().enumerate() {
+        for (index, column) in row.cells.iter().enumerate() {
             let text_length = column.text.len();
             if let Some(entry) = columns_width.get_mut(index) {
                 if *entry < text_length {
@@ -62,9 +74,9 @@ pub fn render_table(table: &Table, buffer: &mut String) {
     }
 
     for row in table.rows.iter() {
-        for (index, column) in row.columns.iter().enumerate() {
+        for (index, column) in row.cells.iter().enumerate() {
             let column_width = columns_width[index];
-            let padding = if index < row.columns.len() - 1 {
+            let padding = if index < row.cells.len() - 1 {
                 column_width - column.text.len() + 2
             } else {
                 column_width - column.text.len()
@@ -95,14 +107,14 @@ mod tests {
         let table = Table {
             rows: vec![
                 TableRow {
-                    columns: vec![
+                    cells: vec![
                         TableCell { text: String::from("1."), align: Align::Left },
                         TableCell { text: String::from("Mushrooms"), align: Align::Left },
                         TableCell { text: String::from("3.00$"), align: Align::Right },
                     ]
                 },
                 TableRow {
-                    columns: vec![
+                    cells: vec![
                         TableCell { text: String::from("2."), align: Align::Left },
                         TableCell { text: String::from("Onions"), align: Align::Left },
                         TableCell { text: String::from("22.00$"), align: Align::Right },

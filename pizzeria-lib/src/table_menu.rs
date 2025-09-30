@@ -11,6 +11,10 @@ impl TableMenu {
     pub fn new(title: String, table: Table) -> Self {
         Self { title, table }
     }
+    
+    pub fn table_mut(&mut self) -> &mut Table {
+        &mut self.table
+    }
 }
 
 impl Display for TableMenu {
