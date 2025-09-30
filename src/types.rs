@@ -167,7 +167,7 @@ mod tests {
     fn test_parse_toppings_from_string_with_single_topping() -> Result<(), Box<dyn std::error::Error>> {
 
         let toppings = parse_toppings(r#"
-Ham 8
+Ham#8
         "#)?;
 
         assert_eq!(toppings, vec![
@@ -181,9 +181,9 @@ Ham 8
     fn test_parse_toppings_from_string_with_multiple_toppings() -> Result<(), Box<dyn std::error::Error>> {
 
         let toppings = parse_toppings(r#"
-Ham 8
-Cheese 3
-Brocoli 4
+Ham#8
+Cheese#3
+Brocoli#4
         "#)?;
 
         assert_eq!(toppings, vec![

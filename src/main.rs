@@ -1,5 +1,4 @@
 mod types;
-mod console;
 mod admin;
 mod table;
 mod table_menu;

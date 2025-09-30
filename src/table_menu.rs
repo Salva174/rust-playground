@@ -75,4 +75,82 @@ mod tests {
         println!("{table_menu}");
         Ok(())
     }
+
+    #[test]
+    fn test_empty_menu() -> Result<(), Box<dyn std::error::Error>> {
+        let title_text = String::from("Menu");
+        let table = Table::new(vec![]);
+        let table_menu = TableMenu::new(title_text, table);
+
+        println!("{table_menu}");
+
+        assert_eq!(format!("{table_menu}").trim(), "
+┌────────┐
+│  Menu  │
+├────────┤
+└────────┘
+".trim());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_menu_with_entries() -> Result<(), Box<dyn std::error::Error>> {
+        let title_text = String::from("Menu");
+        let table = Table::new( vec![
+            TableRow::new( vec![
+                TableCell::new(String::from("1.")),
+                TableCell::new(String::from("Pizza")),
+                TableCell::new(String::from("Margherita"))
+            ]),
+            TableRow::new( vec![
+                TableCell::new(String::from("2.")),
+                TableCell::new(String::from("Pizza")),
+                TableCell::new(String::from("Pepperoni"))
+            ]),
+            TableRow::new(vec![
+                TableCell::new(String::from("3.")),
+                TableCell::new(String::from("Pizza")),
+                TableCell::new(String::from("Salami"))
+            ])
+        ]);
+        let table_menu = TableMenu::new(title_text, table);
+        println!("{table_menu}");
+
+        assert_eq!(format!("{table_menu}").trim(), "
+┌─────────────────────────┐
+│          Menu           │
+├─────────────────────────┤
+│  1.  Pizza  Margherita  │
+│  2.  Pizza  Pepperoni   │
+│  3.  Pizza  Salami      │
+└─────────────────────────┘
+".trim());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_menu_with_long_title_and_short_entries() -> Result<(), Box<dyn std::error::Error>> {
+    let title_text = String::from("Welcome to Salvatores Pizza!");
+    let table = Table::new(vec![
+        TableRow::new( vec![
+            TableCell::new(String::from("1.")),
+            TableCell::new(String::from("M"))
+        ])
+    ]);
+
+    let table_menu = TableMenu::new(title_text, table);
+    println!("{table_menu}");
+
+    assert_eq!(format!("{table_menu}").trim(), "
+┌────────────────────────────────┐
+│  Welcome to Salvatores Pizza!  │
+├────────────────────────────────┤
+│  1.  M                         │
+└────────────────────────────────┘
+".trim());
+
+    Ok(())
+    }
 }
