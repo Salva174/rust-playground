@@ -1,5 +1,4 @@
 use std::io::{Stdin, Stdout, Write};
-
 use std::fs;
 use pizzeria_lib::admin::toppings::edit_toppings;
 use pizzeria_lib::clear_screen;

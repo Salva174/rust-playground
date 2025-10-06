@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let InputEvent::Unknown { input } = &input {
             writeln!(stdout, "{input:?}")?;
         } else {
-            let exit = update(input, &mut state);
+            let exit = update(input, &mut state, &mut stdout, &mut stdin);
             if exit {
                 break;
             }

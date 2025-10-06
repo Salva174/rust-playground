@@ -8,6 +8,7 @@ pub enum InputEvent {
     Enter,
     Exit,
     Back,
+    Char(char),
     Unknown {
         input: Vec<u8>
     },
@@ -39,6 +40,7 @@ pub fn read_input(stdin: &mut Stdin, buffer: & mut [u8]) -> Result<InputEvent, B
         &[127] => {
             Ok(InputEvent::Back)
         }
+        [c] if (32..=126).contains(c) => Ok(InputEvent::Char(*c as char)),
         _ => {
             Ok(InputEvent::Unknown {
                 input: Vec::from(input)

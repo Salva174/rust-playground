@@ -1,4 +1,15 @@
 use std::collections::HashMap;
+use std::{fs, io};
+
+pub fn load_toppings_from_file(path: &str) -> io::Result<Vec<Topping>> {
+    let content = fs::read_to_string(path)?;
+    parse_toppings(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+pub fn load_prebuild_pizzas_from_file(path: &str, available: &[Topping]) -> io::Result<Vec<Pizza>> {
+    let content = fs::read_to_string(path)?;
+    parse_prebuild_pizza(&content, available).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
 
 pub fn parse_toppings(content: &str) -> Result<Vec<Topping>, String> {
     let mut toppings = Vec::new();
@@ -43,7 +54,7 @@ pub fn parse_prebuild_pizza(content: &str, available: &[Topping]) -> Result<Vec<
         }
 
         // Format: <Pizza-Name>#<Topping1|Topping2|…>#<Basispreis>                                      //Topping muss in "pizza_toppings_text" enthalten sein!
-        let mut split = line.split('#');
+        let mut split = line.splitn(3,'#');
         let name = split
             .next()
             .ok_or_else(|| format!("Zeile {}: Pizza-Name fehlt", lineno + 1))?;
@@ -52,7 +63,7 @@ pub fn parse_prebuild_pizza(content: &str, available: &[Topping]) -> Result<Vec<
             .unwrap_or("-");
         let base_price_text = split
             .next()
-            .ok_or_else(|| format!("Zeile {}: Basispreis fehlt", lineno + 1))?;                         //Fehlermeldung falsch, wenn Topping fehlt, wird Basispreis nicht erkannt (verschiebung)
+            .ok_or_else(|| format!("Zeile {}: Basispreis fehlt", lineno + 1))?;
         let base_price = base_price_text.parse::<u32>()
             .map_err(|_| format!("Zeile {}: Ungültiger Basispreis '{}'", lineno + 1, base_price_text))?;
 

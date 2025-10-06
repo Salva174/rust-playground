@@ -1,11 +1,11 @@
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::io::{BufWriter, BufRead, Stdin, Stdout, Write};
+use std::io::{BufWriter, BufRead, Stdin, Stdout, Write, stdout};
 use crate::clear_screen;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
 
-pub fn edit_toppings(stdout: &mut Stdout, stdin: &Stdin) -> Result<(), Box<dyn std::error::Error>> {
+pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dyn std::error::Error>> {
 
     writeln!(stdout, "\x1b[1;31mToppings Editor\x1b[0m <Topping-Name> <Preis>: ")?;
     stdout.flush()?;
@@ -55,7 +55,7 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &Stdin) -> Result<(), Box<dyn s
 
         if choice == "t" {
             clear_screen(stdout)?;
-            list_toppings(file_path)?;
+            list_toppings(stdout, file_path)?;
             continue;
         }
 
@@ -111,7 +111,7 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &Stdin) -> Result<(), Box<dyn s
 }
 
 //Nutzereingabe lesen
-fn prompt(stdin: &Stdin, stdout: &mut Stdout, label: &str) -> io::Result<String> {
+pub fn prompt(stdin: &Stdin, stdout: &mut Stdout, label: &str) -> io::Result<String> {
     write!(stdout, "{}", label)?;
     stdout.flush()?;
     let mut buf = String::new();
@@ -119,7 +119,7 @@ fn prompt(stdin: &Stdin, stdout: &mut Stdout, label: &str) -> io::Result<String>
     Ok(buf)
 }
 
-fn list_toppings(path: &str) -> io::Result<()> {
+pub fn list_toppings(stdout: &mut Stdout, path: &str) -> io::Result<()> {
     let file = File::open(path)?;
     let reader = io::BufReader::new(file);
 
@@ -154,9 +154,9 @@ fn list_toppings(path: &str) -> io::Result<()> {
     }
 
     let table_menu = TableMenu::new(title_text, table);
-    println!("{table_menu}");
-
-
+    // println!("{table_menu}");
+    writeln!(stdout, "{table_menu}")?;
+    stdout.flush()?;
     Ok(())
 }
 

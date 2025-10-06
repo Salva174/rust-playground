@@ -1,10 +1,14 @@
 use pizzeria_lib::table::{Table, TableCell, TableRow};
 use pizzeria_lib::table_menu::TableMenu;
+use pizzeria_lib::types::{load_prebuild_pizzas_from_file, load_toppings_from_file, Pizza, Topping};
+use crate::update::build_order_menu;
 
 pub struct State {
     pub menus: [TableMenu; 3],
     pub current_menu: MenuIndex,
     pub selected_row: usize,
+    pub toppings_catalog: Vec<Topping>,
+    pub prebuilt_pizzas: Vec<Pizza>,
 }
 
 impl State {
@@ -35,6 +39,13 @@ impl MenuIndex {
 }
 
 pub fn create_initial_state() -> State {
+    let toppings_catalog = load_toppings_from_file("pizza_toppings_text").unwrap_or_default();
+    let prebuilt_pizzas  = load_prebuild_pizzas_from_file("pizza_prebuilds_text", &toppings_catalog).unwrap_or_default();
+    let order_menu = build_order_menu(&prebuilt_pizzas);
+
+    // state.prebuilt_pizzas = prebuilt_pizzas;
+    // state.menus[MenuIndex::OrderMenu.as_index()] = build_order_menu(&state.prebuilt_pizzas);
+
     State {
         menus: [
             TableMenu::new(String::from("Welcome to Salvatores Pizza!"), Table::new(vec! [
@@ -54,23 +65,7 @@ pub fn create_initial_state() -> State {
                     TableCell::new(String::from("Quit"))
                 ])
             ])),
-            TableMenu::new(String::from("Order Menu"), Table::new(vec! [
-                TableRow::new( vec! [
-                    TableCell::new(String::from(">")),
-                    TableCell::new(String::from("1:")),
-                    TableCell::new(String::from("Pizza Salami"))
-                ]),
-                TableRow::new( vec! [
-                    TableCell::new(String::from(" ")),
-                    TableCell::new(String::from("2:")),
-                    TableCell::new(String::from("Pizza Hawaii"))
-                ]),
-                TableRow::new( vec! [
-                    TableCell::new(String::from(" ")),
-                    TableCell::new(String::from("3:")),
-                    TableCell::new(String::from("Pizza funghi"))
-                ])
-            ])),
+            order_menu,
             TableMenu::new(String::from("Edit Toppings Menu"), Table::new(vec! [
                 TableRow::new( vec! [
                     TableCell::new(String::from(">")),
@@ -84,12 +79,19 @@ pub fn create_initial_state() -> State {
                 ]),
                 TableRow::new( vec! [
                     TableCell::new(String::from(" ")),
+                    TableCell::new(String::from("T:")),
+                    TableCell::new(String::from("Show Topping-List"))
+                ]),
+                TableRow::new( vec! [
+                    TableCell::new(String::from(" ")),
                     TableCell::new(String::from("D:")),
                     TableCell::new(String::from("Delete-List"))
                 ])
             ])),
         ],
         current_menu: MenuIndex::MainMenu,
-        selected_row: 0
+        selected_row: 0,
+        toppings_catalog,
+        prebuilt_pizzas,
     }
 }
