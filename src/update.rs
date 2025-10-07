@@ -1,12 +1,13 @@
 use std::error::Error;
 use std::fs::{File, OpenOptions};
-use std::io;
-use std::io::{stdin, stdout, BufRead, BufReader, BufWriter, Read, Stdin, Stdout, Write};
-use pizzeria_lib::admin::toppings::{edit_toppings, list_toppings};
+use std::{fs, io};
+use std::io::{BufRead, BufReader, BufWriter, Read, Stdin, Stdout, Write};
+use pizzeria_lib::admin::toppings::list_toppings;
 use pizzeria_lib::clear_screen;
-use pizzeria_lib::table::{Align, Table, TableCell, TableRow};
+use pizzeria_lib::table::{Table, TableCell, TableRow};
+use pizzeria_lib::table::Align::Right;
 use pizzeria_lib::table_menu::TableMenu;
-use pizzeria_lib::types::Pizza;
+use pizzeria_lib::types::{load_toppings_from_file, parse_prebuild_pizza, Pizza, Topping};
 use crate::input::InputEvent;
 use crate::state::{MenuIndex, State};
 
@@ -52,9 +53,8 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
                 writeln!(stdout, "Custom Pizza-Konfigurator coming soon.").ok();
                 wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
             } else if let Some(p) = state.prebuilt_pizzas.get(state.selected_row) {
-                writeln!(stdout, "\nBestellung bestätigt: \x1b[1m{}\x1b[0m ({}.00$).", p.name, p.total_price()).ok();
+                writeln!(stdout, "\n\x1b[4;32mBestellung bestätigt\x1b[0m: \x1b[1m{}\x1b[0m ({}.00$).", p.name, p.total_price()).ok();
                 wait_enter(stdout, stdin, "\n[OK mit Enter]").ok();
-                //todo: fix 0.00$ Bug.
             } else {
                 writeln!(stdout, "Ungültige Auswahl.").ok();
                 wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
@@ -142,6 +142,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
                     if let Err(e) = remove_topping(stdout, stdin, file_path) {
                         writeln!(stdout, "Fehler {e}").ok();
                     }
+                    wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
                 }
                 2 => {
                     let _ = clear_screen(stdout);
@@ -188,13 +189,13 @@ fn select_row(table: &mut Table, selected_row: usize) {
 
 fn clear_toppings_file(path: &str) -> io::Result<()> {
     // truncate durch create() ohne append
-    std::fs::File::create(path).map(|_| ())
+    File::create(path).map(|_| ())
 }
 
 fn wait_enter(stdout: &mut Stdout, stdin: &mut Stdin, msg: &str) -> io::Result<()> {
     write!(stdout, "{msg}")?;
     stdout.flush()?;
-    // Lies bis CR/LF
+
     let mut b = [0u8; 1];
     loop {
         let n = stdin.read(&mut b)?;
@@ -237,7 +238,7 @@ fn prompt(stdin: &mut Stdin, stdout: &mut Stdout, label: &str) -> io::Result<Str
 
 // Entfernen nach Nummer oder Name (Nutzer gibt String ein)
 fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, path: &str) -> io::Result<()> {
-    // Liste zeigen
+
     list_toppings(stdout, path)?;
 
     // Eingabe erfragen
@@ -259,6 +260,8 @@ fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, path: &str) -> io::Res
 
     if lines.is_empty() {
         writeln!(stdout, "Keine Toppings vorhanden.")?;
+        stdout.flush()?;
+        wait_enter(stdout, stdin, "\n[Weiter mit Enter]")?;
         return Ok(());
     }
 
@@ -267,6 +270,8 @@ fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, path: &str) -> io::Res
         // Nummernbasiert (1..=len)
         if idx1 == 0 || idx1 > lines.len() {
             writeln!(stdout, "Ungültige Nummer.")?;
+            stdout.flush()?;
+            wait_enter(stdout, stdin, "\n[Weiter mit Enter]")?;
             return Ok(());
         }
         let entry = lines.remove(idx1 - 1);
@@ -277,6 +282,8 @@ fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, path: &str) -> io::Res
             Some(lines.remove(pos))
         } else {
             writeln!(stdout, "Kein Eintrag mit diesem Namen gefunden.")?;
+            stdout.flush()?;
+            wait_enter(stdout, stdin, "\n[Weiter mit Enter]")?;
             None
         }
     };
@@ -291,7 +298,7 @@ fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, path: &str) -> io::Res
         writer.flush()?;
 
         let name = entry.split('#').next().unwrap_or(&entry);
-        writeln!(stdout, "Entfernt: {name}")?;
+        writeln!(stdout, "\x1b[1;31mEntfernt:\x1b[0m \x1b[1m{name}\x1b[0m")?;
     }
 
     Ok(())
@@ -312,9 +319,9 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
         writeln!(stdout, "\x1b[1;31mTopping hinzufügen\x1b[0m (Name, dann Preis). 'q' zum Abbrechen.")?;
         stdout.flush()?;
 
-        // 1) Name
+        //  Name
         let topping_name = {
-            let input = prompt(stdin, stdout, "Name: ")?;
+            let input = prompt(stdin, stdout, "\x1b[4;34mName\x1b[0m: ")?;
             let name = input.trim();
             if name.is_empty() || name.eq_ignore_ascii_case("q") {
                 writeln!(stdout, "Abgebrochen.")?;
@@ -323,9 +330,9 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
             name.to_string()
         };
 
-        // 2) Preis (Ganzzahl)
+        //  Preis
         let topping_price: u32 = loop {
-            let input = prompt(stdin, stdout, "Preis (Ganzzahl): ")?;
+            let input = prompt(stdin, stdout, "\x1b[4;34mPreis (Ganzzahl)\x1b[0m: ")?;
             let input = input.trim();
 
             if input.eq_ignore_ascii_case("q") || input.is_empty() {
@@ -359,31 +366,9 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
 }
 
 
-pub fn load_prebuilt_pizzas(path: &str) -> io::Result<Vec<Pizza>> {
-    let file = match File::open(path) {
-        Ok(f) => f,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(vec![]),
-        Err(e) => return Err(e),
-    };
-    let reader = BufReader::new(file);
-
-    let mut items = Vec::new();
-    for line in reader.lines() {
-        let line = line?;
-        let line = line.trim();
-        if line.is_empty() { continue; }
-
-        let mut parts = line.splitn(2, '#');
-        let name = parts.next().unwrap_or("").trim().to_string();
-        let base_price = parts.next().unwrap_or("0").trim().parse::<u32>().unwrap_or(0);
-
-        items.push(Pizza {
-            name,
-            base_price,
-            toppings: Vec::new(), // jetzt leer; total_price() == base_price
-        });
-    }
-    Ok(items)
+pub fn load_prebuilt_pizzas_from_file(path: &str, available:  &[Topping]) -> io::Result<Vec<Pizza>> {
+    let content = fs::read_to_string(path)?;
+    parse_prebuild_pizza(&content, available).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 pub fn build_order_menu(prebuilt: &[Pizza]) -> TableMenu {
@@ -401,7 +386,7 @@ pub fn build_order_menu(prebuilt: &[Pizza]) -> TableMenu {
                 TableCell::new(" ".into()),
                 TableCell::new(format!("{}:", i + 1)),
                 TableCell::new(format!("{}", p.name)),
-                TableCell::new(format!("{}.00$", p.total_price()))
+                TableCell::new_with_alignment(format!("{}.00$", p.total_price()), Right),
             ]));
         }
     }
@@ -416,17 +401,54 @@ pub fn build_order_menu(prebuilt: &[Pizza]) -> TableMenu {
     TableMenu::new("Order Menu".into(), table)
 }
 
+pub fn build_order_menu_error(err_msg: &str) -> TableMenu {
+    let table = Table::new(vec![
+        TableRow::new(vec![
+            TableCell::new(" ".into()),
+            TableCell::new("! ".into()),
+            TableCell::new(format!("Fehler beim Laden der Prebuilt-Pizzen:")),
+        ]),
+        TableRow::new(vec![
+            TableCell::new(" ".into()),
+            TableCell::new(" ".into()),
+            TableCell::new(format!("{err_msg}")),
+        ]),
+        TableRow::new(vec![
+            TableCell::new(" ".into()),
+            TableCell::new("=>".into()),
+            TableCell::new("Bitte 'pizza_prebuilds_text' korrigieren.".into()),
+        ]),
+    ]);
+    TableMenu::new("Order Menu (Fehler)".into(), table)
+}
+
 impl State {
     pub fn refresh_order_menu(&mut self) {
-        if let Ok(pizzas) = load_prebuilt_pizzas("pizza_prebuilds_text") {
-            self.prebuilt_pizzas = pizzas;
+        if let Ok(catalog) = load_toppings_from_file("pizza_toppings_text") {
+            self.toppings_catalog = catalog;
+        }
 
-            let idx = MenuIndex::OrderMenu.as_index();
-            self.menus[idx] = build_order_menu(&self.prebuilt_pizzas);
+        let idx = MenuIndex::OrderMenu.as_index();
+
+        match load_prebuilt_pizzas_from_file("pizza_prebuilds_text", &self.toppings_catalog) {
+            Ok(pizzas) => {
+                self.prebuilt_pizzas = pizzas;
+                self.menus[idx] = build_order_menu(&self.prebuilt_pizzas);
+            }
+            Err(e) => {
+                self.prebuilt_pizzas.clear();
+                self.menus[idx] = build_order_menu_error(&e.to_string());
+            }
+        }
+        // if let Ok(pizzas) = load_prebuilt_pizzas_from_file("pizza_prebuilds_text", &self.toppings_catalog) {
+        //     self.prebuilt_pizzas = pizzas;
+        //
+        //     let idx = MenuIndex::OrderMenu.as_index();
+        //     self.menus[idx] = build_order_menu(&self.prebuilt_pizzas);
 
             let len = self.menus[idx].table_mut().rows_mut().len();
             if self.selected_row >= len { self.selected_row = 0; }
             select_row(self.menus[idx].table_mut(), self.selected_row);
-        }
+
     }
 }

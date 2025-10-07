@@ -1,7 +1,7 @@
 use pizzeria_lib::table::{Table, TableCell, TableRow};
 use pizzeria_lib::table_menu::TableMenu;
 use pizzeria_lib::types::{load_prebuild_pizzas_from_file, load_toppings_from_file, Pizza, Topping};
-use crate::update::build_order_menu;
+use crate::update::{build_order_menu, build_order_menu_error, load_prebuilt_pizzas_from_file};
 
 pub struct State {
     pub menus: [TableMenu; 3],
@@ -40,8 +40,19 @@ impl MenuIndex {
 
 pub fn create_initial_state() -> State {
     let toppings_catalog = load_toppings_from_file("pizza_toppings_text").unwrap_or_default();
-    let prebuilt_pizzas  = load_prebuild_pizzas_from_file("pizza_prebuilds_text", &toppings_catalog).unwrap_or_default();
-    let order_menu = build_order_menu(&prebuilt_pizzas);
+
+    let (prebuilt_pizzas, order_menu) = match load_prebuilt_pizzas_from_file("pizza_prebuilds_text", &toppings_catalog) {
+        Ok(pz) => {
+            let menu = build_order_menu(&pz);
+            (pz, menu)
+        }
+        Err(e) => {
+            let menu = build_order_menu_error(&e.to_string());
+            (Vec::new(), menu)
+        }
+    };
+    // let prebuilt_pizzas  = load_prebuild_pizzas_from_file("pizza_prebuilds_text", &toppings_catalog).unwrap_or_default();
+    // let order_menu = build_order_menu(&prebuilt_pizzas);
 
     // state.prebuilt_pizzas = prebuilt_pizzas;
     // state.menus[MenuIndex::OrderMenu.as_index()] = build_order_menu(&state.prebuilt_pizzas);
