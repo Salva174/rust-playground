@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::os::fd::AsRawFd;
 use rust_playground::input::{read_input, InputEvent};
-use rust_playground::state::{create_initial_state, State};
+use rust_playground::state::create_initial_state;
 use rust_playground::render::render;
 use rust_playground::update::update;
 

@@ -1,6 +1,6 @@
 use pizzeria_lib::table::{Table, TableCell, TableRow};
 use pizzeria_lib::table_menu::TableMenu;
-use pizzeria_lib::types::{load_prebuild_pizzas_from_file, load_toppings_from_file, Pizza, Topping};
+use pizzeria_lib::types::{load_toppings_from_file, Pizza, Topping};
 use crate::update::{build_order_menu, build_order_menu_error, load_prebuilt_pizzas_from_file};
 
 pub struct State {
@@ -51,11 +51,6 @@ pub fn create_initial_state() -> State {
             (Vec::new(), menu)
         }
     };
-    // let prebuilt_pizzas  = load_prebuild_pizzas_from_file("pizza_prebuilds_text", &toppings_catalog).unwrap_or_default();
-    // let order_menu = build_order_menu(&prebuilt_pizzas);
-
-    // state.prebuilt_pizzas = prebuilt_pizzas;
-    // state.menus[MenuIndex::OrderMenu.as_index()] = build_order_menu(&state.prebuilt_pizzas);
 
     State {
         menus: [

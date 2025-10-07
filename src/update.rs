@@ -8,7 +8,7 @@ use pizzeria_lib::table::{Table, TableCell, TableRow};
 use pizzeria_lib::table::Align::Right;
 use pizzeria_lib::table_menu::TableMenu;
 use pizzeria_lib::types::{load_toppings_from_file, parse_prebuild_pizza, Pizza, Topping};
-use crate::input::InputEvent;
+use crate::input::{read_input, InputEvent};
 use crate::state::{MenuIndex, State};
 
 pub fn update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin) -> bool {
@@ -49,9 +49,11 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
             let custom_row = len; // letzte Zeile ist Custom (nach n Pizzen eingefügt)
 
             if state.selected_row == custom_row {
-                // TODO: Custom Pizza Flow (später)
-                writeln!(stdout, "Custom Pizza-Konfigurator coming soon.").ok();
-                wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
+                let base_price = 6;
+                if let Err(e) = order_custom_pizza(stdout, stdin, &state.toppings_catalog, base_price) {
+                    writeln!(stdout, "Custom Pizza-Konfigurator coming soon.").ok();
+                    wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
+                }
             } else if let Some(p) = state.prebuilt_pizzas.get(state.selected_row) {
                 writeln!(stdout, "\n\x1b[4;32mBestellung bestätigt\x1b[0m: \x1b[1m{}\x1b[0m ({}.00$).", p.name, p.total_price()).ok();
                 wait_enter(stdout, stdin, "\n[OK mit Enter]").ok();
@@ -188,7 +190,6 @@ fn select_row(table: &mut Table, selected_row: usize) {
 }
 
 fn clear_toppings_file(path: &str) -> io::Result<()> {
-    // truncate durch create() ohne append
     File::create(path).map(|_| ())
 }
 
@@ -319,7 +320,6 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
         writeln!(stdout, "\x1b[1;31mTopping hinzufügen\x1b[0m (Name, dann Preis). 'q' zum Abbrechen.")?;
         stdout.flush()?;
 
-        //  Name
         let topping_name = {
             let input = prompt(stdin, stdout, "\x1b[4;34mName\x1b[0m: ")?;
             let name = input.trim();
@@ -330,7 +330,6 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
             name.to_string()
         };
 
-        //  Preis
         let topping_price: u32 = loop {
             let input = prompt(stdin, stdout, "\x1b[4;34mPreis (Ganzzahl)\x1b[0m: ")?;
             let input = input.trim();
@@ -364,7 +363,6 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
 
     Ok(())
 }
-
 
 pub fn load_prebuilt_pizzas_from_file(path: &str, available:  &[Topping]) -> io::Result<Vec<Pizza>> {
     let content = fs::read_to_string(path)?;
@@ -422,6 +420,131 @@ pub fn build_order_menu_error(err_msg: &str) -> TableMenu {
     TableMenu::new("Order Menu (Fehler)".into(), table)
 }
 
+pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_toppings: &[Topping], base_price: u32, ) -> Result<(), Box<dyn Error>> {
+    let mut selected_row: usize = 0;
+    let n = available_toppings.len();
+    let checkout_row = n;
+    let clear_row    = n + 1;
+    let back_row     = n + 2;
+
+    // Menge je Topping (für Mehrfachauswahl)
+    let mut qty = vec![0u32; n];
+    let mut in_buf = [0u8; 64];
+
+    loop {
+        // Render
+        clear_screen(stdout)?;
+        let mut table = Table::new(vec![]);
+
+        for (i, t) in available_toppings.iter().enumerate() {
+            let marker = if i == selected_row { ">" } else { " " };
+            let qty_str = if qty[i] > 0 { format!("x{}", qty[i]) } else { String::new() };
+
+            table.push(TableRow::new(vec![
+                TableCell::new(marker.into()),
+                TableCell::new(format!("{}:", i + 1)),
+                TableCell::new(t.name.clone()),
+                TableCell::new_with_alignment(format!("{}.00$", t.price), Right),
+                TableCell::new_with_alignment(format!(" {qty_str}"), Right),
+            ]));
+        }
+
+        table.push(TableRow::new(vec![
+            TableCell::new(" ".into()),
+            TableCell::new(String::new()),
+            TableCell::new(String::new()),
+            TableCell::new_with_alignment(String::new(), Right),
+            TableCell::new_with_alignment(String::new(), Right),
+        ]));
+
+        // Aktionen
+        let make_action = |idx: usize, tag: &str, label: &str| {
+            TableRow::new(vec![
+                TableCell::new(if selected_row == idx { ">" } else { " " }.into()), // Marker
+                TableCell::new(tag.into()),                                         // Icon/Index
+                TableCell::new(label.into()),                                       // Text
+                TableCell::new_with_alignment(String::new(), Right),         // Preis-Platzhalter
+                TableCell::new_with_alignment(String::new(), Right),         // Menge-Platzhalter
+            ])
+        };
+
+        // Aktionen (mit 5 Spalten!)
+        table.push(make_action(checkout_row, "C", "Checkout"));
+        table.push(make_action(clear_row,    "CL", "Clear selection"));
+        table.push(make_action(back_row,     "B", "Back"));
+
+        // Menütitel + Ausgabe
+        let tm = TableMenu::new("Custom Pizza".into(), table);
+        writeln!(stdout, "{tm}")?;
+
+        let toppings_sum: u32 = qty.iter().enumerate().map(|(i, &q)| q * available_toppings[i].price).sum();
+        let total = base_price + toppings_sum;
+        writeln!(stdout, "\nBasispreis: {}.00$  |  Toppings: {}.00$  |  Gesamt: \x1b[1m{}.00$\x1b[0m",
+                 base_price, toppings_sum, total)?;
+        writeln!(stdout, "\n[↑/↓] bewegen · [Enter] hinzufügen/auswählen · [←] entfernen · [Backspace] zurück")?;
+        stdout.flush()?;
+
+        // Eingabe
+        let ev = read_input(stdin, &mut in_buf)?;
+        match ev {
+            InputEvent::Up => {
+                if selected_row > 0 { selected_row -= 1; } else { selected_row = back_row; }
+            }
+            InputEvent::Down => {
+                if selected_row < back_row { selected_row += 1; } else { selected_row = 0; }
+            }
+            InputEvent::Left => {
+                if selected_row < n && qty[selected_row] > 0 {
+                    qty[selected_row] -= 1;
+                }
+            }
+            InputEvent::Back => {
+                // Abbruch zurück zum Order-Menü
+                return Ok(());
+            }
+            InputEvent::Enter => {
+                if selected_row < n {
+                    // topping hinzufügen
+                    qty[selected_row] += 1;
+                } else if selected_row == checkout_row {
+                    // Checkout: Zusammenfassung + Preis anzeigen
+                    clear_screen(stdout)?;
+                    let mut sum_table = Table::new(vec![]);
+                    for (i, &q) in qty.iter().enumerate().filter(|(_, q)| **q > 0) {
+                        sum_table.push(TableRow::new(vec![
+                            TableCell::new(format!("{} x {}", available_toppings[i].name, q)),
+                            TableCell::new_with_alignment(format!("{}.00$", available_toppings[i].price * q), Right),
+                        ]));
+                    }
+                    let tm2 = TableMenu::new("Your toppings".into(), sum_table);
+                    writeln!(stdout, "{tm2}")?;
+                    let pizza = Pizza {
+                        name: "Custom".into(),
+                        base_price,
+                        toppings: {
+                            let mut v = Vec::new();
+                            for (i, &q) in qty.iter().enumerate() {
+                                for _ in 0..q { v.push(available_toppings[i].clone()); }
+                            }
+                            v
+                        },
+                    };
+                    writeln!(stdout, "Gesamtpreis: \x1b[4;30m{}.00$\x1b[0m", pizza.total_price())?;
+                    wait_enter(stdout, stdin, "\n[OK mit Enter]")?;
+                    return Ok(());
+                } else if selected_row == clear_row {
+                    // Auswahl zurücksetzen
+                    for q in &mut qty { *q = 0; }
+                } else {
+                    // Back
+                    return Ok(());
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 impl State {
     pub fn refresh_order_menu(&mut self) {
         if let Ok(catalog) = load_toppings_from_file("pizza_toppings_text") {
@@ -440,11 +563,6 @@ impl State {
                 self.menus[idx] = build_order_menu_error(&e.to_string());
             }
         }
-        // if let Ok(pizzas) = load_prebuilt_pizzas_from_file("pizza_prebuilds_text", &self.toppings_catalog) {
-        //     self.prebuilt_pizzas = pizzas;
-        //
-        //     let idx = MenuIndex::OrderMenu.as_index();
-        //     self.menus[idx] = build_order_menu(&self.prebuilt_pizzas);
 
             let len = self.menus[idx].table_mut().rows_mut().len();
             if self.selected_row >= len { self.selected_row = 0; }

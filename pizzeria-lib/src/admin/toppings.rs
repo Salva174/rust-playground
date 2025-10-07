@@ -1,6 +1,6 @@
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::io::{BufWriter, BufRead, Stdin, Stdout, Write, stdout};
+use std::io::{BufWriter, BufRead, Stdin, Stdout, Write};
 use crate::clear_screen;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
