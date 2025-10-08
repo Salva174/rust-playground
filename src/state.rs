@@ -1,7 +1,8 @@
+use std::{fs, io};
 use pizzeria_lib::table::{Table, TableCell, TableRow};
+use pizzeria_lib::table::Align::Right;
 use pizzeria_lib::table_menu::TableMenu;
-use pizzeria_lib::types::{load_toppings_from_file, Pizza, Topping};
-use crate::update::{build_order_menu, build_order_menu_error, load_prebuilt_pizzas_from_file};
+use pizzeria_lib::types::{load_toppings_from_file, parse_prebuild_pizza, Pizza, Topping};
 
 pub struct State {
     pub menus: [TableMenu; 3],
@@ -18,6 +19,30 @@ impl State {
 
     pub fn current_menu_mut(&mut self) -> &mut TableMenu {
         &mut self.menus[self.current_menu.as_index()]
+    }
+
+    pub fn refresh_order_menu(&mut self) {
+        if let Ok(catalog) = load_toppings_from_file("pizza_toppings_text") {
+            self.toppings_catalog = catalog;
+        }
+
+        let idx = MenuIndex::OrderMenu.as_index();
+
+        match load_prebuilt_pizzas_from_file("pizza_prebuilds_text", &self.toppings_catalog) {
+            Ok(pizzas) => {
+                self.prebuilt_pizzas = pizzas;
+                self.menus[idx] = build_order_menu(&self.prebuilt_pizzas);
+            }
+            Err(e) => {
+                self.prebuilt_pizzas.clear();
+                self.menus[idx] = build_order_menu_error(&e.to_string());
+            }
+        }
+
+        let len = self.menus[idx].table_mut().rows_mut().len();
+        if self.selected_row >= len { self.selected_row = 0; }
+        crate::update::select_row(self.menus[idx].table_mut(), self.selected_row);
+
     }
 }
 
@@ -100,4 +125,60 @@ pub fn create_initial_state() -> State {
         toppings_catalog,
         prebuilt_pizzas,
     }
+}
+
+pub fn load_prebuilt_pizzas_from_file(path: &str, available:  &[Topping]) -> io::Result<Vec<Pizza>> {
+    let content = fs::read_to_string(path)?;
+    parse_prebuild_pizza(&content, available).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+pub fn build_order_menu(prebuilt: &[Pizza]) -> TableMenu {
+    let mut table = Table::new(vec![]);
+
+    if prebuilt.is_empty() {
+        table.push(TableRow::new(vec![
+            TableCell::new(" ".into()),
+            TableCell::new("-".into()),
+            TableCell::new("Keine Prebuilt-Pizzen vorhanden".into()),
+        ]));
+    } else {
+        for (i, p) in prebuilt.iter().enumerate() {
+            table.push(TableRow::new(vec![
+                TableCell::new(" ".into()),
+                TableCell::new(format!("{}:", i + 1)),
+                TableCell::new(format!("{}", p.name)),
+                TableCell::new_with_alignment(format!("{}.00$", p.total_price()), Right),
+            ]));
+        }
+    }
+
+    // Letzte Zeile: Custom Pizza
+    table.push(TableRow::new(vec![
+        TableCell::new(" ".into()),
+        TableCell::new("C:".into()),
+        TableCell::new("Custom Pizza".into()),
+    ]));
+
+    TableMenu::new("Order Menu".into(), table)
+}
+
+pub fn build_order_menu_error(err_msg: &str) -> TableMenu {
+    let table = Table::new(vec![
+        TableRow::new(vec![
+            TableCell::new(" ".into()),
+            TableCell::new("! ".into()),
+            TableCell::new(format!("Fehler beim Laden der Prebuilt-Pizzen:")),
+        ]),
+        TableRow::new(vec![
+            TableCell::new(" ".into()),
+            TableCell::new(" ".into()),
+            TableCell::new(format!("{err_msg}")),
+        ]),
+        TableRow::new(vec![
+            TableCell::new(" ".into()),
+            TableCell::new("=>".into()),
+            TableCell::new("Bitte 'pizza_prebuilds_text' korrigieren.".into()),
+        ]),
+    ]);
+    TableMenu::new("Order Menu (Fehler)".into(), table)
 }

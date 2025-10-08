@@ -1,6 +1,5 @@
 use std::io::{Stdin, Stdout, Write};
 use std::fs;
-use pizzeria_lib::admin::toppings::edit_toppings;
 use pizzeria_lib::clear_screen;
 use pizzeria_lib::table::{Table, TableCell, TableRow};
 use pizzeria_lib::table_menu::TableMenu;
@@ -50,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match input.trim() {
         "1" => order_pizza(&mut stdout, &stdin, &toppings, &pizzas)?,
-        "2" => edit_toppings(&mut stdout, &stdin)?,
+        // "2" => edit_toppings(&mut stdout, &stdin)?,
         &_ => writeln!(stdout, "Quit")?
     }
 
