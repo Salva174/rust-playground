@@ -30,7 +30,7 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<d
         }
         stdout.flush()?;
 
-        let choice_raw = prompt(stdin, stdout, "")?;
+        let choice_raw = prompt_toppings(stdin, stdout, "")?;
         let choice = choice_raw.trim().to_lowercase();
 
         if choice == "n" || choice == "nein" || choice == "q" {
@@ -66,7 +66,7 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<d
 
         //Name abfragen
         let topping_name = {
-            let input = prompt(stdin, stdout, "\x1b[4;34mName\x1b[0m: ")?;
+            let input = prompt_toppings(stdin, stdout, "\x1b[4;34mName\x1b[0m: ")?;
             if input.eq_ignore_ascii_case("q") {
                 clear_screen(stdout)?;
                 writeln!(stdout, "Beende Eingabe.")?;
@@ -82,7 +82,7 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<d
 
         //Preis abfragen
         let topping_price: u32 = loop {
-            let input = prompt(stdin, stdout, "\x1b[4;34mPreis\x1b[0m (Ganzzahl): ")?;
+            let input = prompt_toppings(stdin, stdout, "\x1b[4;34mPreis\x1b[0m (Ganzzahl): ")?;
             let input = input.trim();
 
             if input.eq_ignore_ascii_case("q") {
@@ -111,7 +111,7 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<d
 }
 
 //Nutzereingabe lesen
-pub fn prompt(stdin: &Stdin, stdout: &mut Stdout, label: &str) -> io::Result<String> {
+fn prompt_toppings(stdin: &Stdin, stdout: &mut Stdout, label: &str) -> io::Result<String> {
     write!(stdout, "{}", label)?;
     stdout.flush()?;
     let mut buf = String::new();

@@ -2,9 +2,9 @@ use std::error::Error;
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::{BufRead, BufReader, BufWriter, Stdin, Stdout, Write};
-use pizzeria_lib::admin::toppings::{list_toppings, prompt};
+use pizzeria_lib::admin::toppings::list_toppings;
 use pizzeria_lib::clear_screen;
-use crate::ui::wait_enter;
+use crate::ui::{wait_enter, prompt};
 
 // Entfernen nach Nummer oder Name
 pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, path: &str) -> io::Result<()> {

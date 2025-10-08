@@ -14,7 +14,7 @@ pub fn wait_enter(stdout: &mut Stdout, stdin: &mut Stdin, msg: &str) -> io::Resu
     Ok(())
 }
 
-fn prompt(stdin: &mut Stdin, stdout: &mut Stdout, label: &str) -> io::Result<String> {
+pub fn prompt(stdin: &mut Stdin, stdout: &mut Stdout, label: &str) -> io::Result<String> {
     write!(stdout, "{}", label)?;
     stdout.flush()?;
 
