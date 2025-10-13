@@ -10,6 +10,7 @@ use pizzeria_lib::table_menu::TableMenu;
 use pizzeria_lib::types::{Pizza, Topping};
 use crate::custom_toppings::{add_toppings, remove_topping};
 use crate::input::{read_input, InputEvent};
+use crate::render::render_menu;
 use crate::state::{MenuIndex, State};
 use crate::ui::wait_enter;
 
@@ -263,13 +264,17 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
 
         // Menütitel + Ausgabe
         let tm = TableMenu::new("Custom Pizza".into(), table);
-        writeln!(stdout, "{tm}")?;
 
         let toppings_sum: u32 = qty.iter().enumerate().map(|(i, &q)| q * available_toppings[i].price).sum();
         let total = base_price + toppings_sum;
-        writeln!(stdout, "\nBasispreis: {}.00$  |  Toppings: {}.00$  |  Gesamt: \x1b[1m{}.00$\x1b[0m",
-                 base_price, toppings_sum, total)?;
-        writeln!(stdout, "\n[↑/↓] bewegen · [Enter] hinzufügen/auswählen · [←] entfernen · [Backspace] zurück")?;
+
+        let footer = [
+            "",
+            &format!("Basispreis: {}.00$ | Toppings: {}.00$ | Gesamt: \x1b[1m{}.00$\x1b[0m",
+                        base_price, toppings_sum, total),
+            "[↑/↓] bewegen · [Enter] hinzufügen/auswählen · [←] entfernen · [Backspace] zurück",
+        ];
+        render_menu(stdout, &tm, "CustomPizza", selected_row, &footer)?;
         stdout.flush()?;
 
         // Eingabe
