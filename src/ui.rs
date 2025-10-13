@@ -43,3 +43,9 @@ pub fn prompt(stdin: &mut Stdin, stdout: &mut Stdout, label: &str) -> io::Result
     writeln!(stdout)?;
     Ok(String::from_utf8_lossy(&buf).trim().to_string())
 }
+
+pub fn confirm(stdin: &mut Stdin, stdout: &mut Stdout, question: &str) -> io::Result<bool> {
+    let answer = prompt(stdin, stdout, question)?;
+    let a = answer.trim().to_lowercase();
+    Ok(matches!(a.as_str(), "j" | "ja" | "y" | "yes"))
+}

@@ -13,7 +13,7 @@ use crate::input::{read_input, InputEvent};
 use crate::render::render_menu;
 use crate::state::{MenuIndex, State};
 use crate::transactions::{log_custom_pizza, log_transaction};
-use crate::ui::wait_enter;
+use crate::ui::{confirm, wait_enter};
 
 const LOG_PATH: &str = "transactions.log";
 
@@ -179,10 +179,22 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
                 }
                 3 => {
-                    if let Err(e) = clear_toppings_file(file_path) {
-                        writeln!(stdout, "Fehler: {e}").ok();
-                    } else {
-                        writeln!(stdout, "\x1b[1;35mDatei geleert. \x1b[0m").ok();
+                    // let _ = clear_screen(stdout);
+
+                    match confirm(stdin, stdout, "\n\x1b[34mListe wirklich löschen?\x1b[0m (\x1b[32mY\x1b[0m/\x1b[31mN\x1b[0m): ") {
+                        Ok(true) => {
+                            if let Err(e) = clear_toppings_file(file_path) {
+                                writeln!(stdout, "Fehler: {e}").ok();
+                            } else {
+                                writeln!(stdout, "\x1b[1;35mDatei geleert. \x1b[0m").ok();
+                            }
+                        }
+                        Ok(false) => {
+                            writeln!(stdout, "\nAbgebrochen - Liste wurde nicht gelöscht.").ok();
+                        }
+                        Err(e) => {
+                            writeln!(stdout, "\nFehler bei der Eingabe: {e}").ok();
+                        }
                     }
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
                 }
