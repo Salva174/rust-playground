@@ -7,7 +7,7 @@ use pizzeria_lib::types::{load_toppings_from_file, parse_prebuild_pizza, Pizza, 
 pub struct State {
     pub menus: [TableMenu; 3],
     pub current_menu: MenuIndex,
-    pub selected_row: usize,
+    pub selected_rows: [usize; 3],
     pub toppings_catalog: Vec<Topping>,
     pub prebuilt_pizzas: Vec<Pizza>,
 }
@@ -19,6 +19,20 @@ impl State {
 
     pub fn current_menu_mut(&mut self) -> &mut TableMenu {
         &mut self.menus[self.current_menu.as_index()]
+    }
+
+    pub fn selected_row(&self) -> usize {
+        self.selected_rows[self.current_menu.as_index()]
+    }
+    pub fn set_selected_row(&mut self, row: usize) {
+        let i = self.current_menu.as_index();
+        self.selected_rows[i] = row;
+    }
+
+    pub fn apply_selection_marker(&mut self) {
+        let sel = self.selected_row();
+        let table = self.current_menu_mut().table_mut();
+        crate::update::select_row(table, sel);
     }
 
     pub fn refresh_order_menu(&mut self) {
@@ -40,9 +54,13 @@ impl State {
         }
 
         let len = self.menus[idx].table_mut().rows_mut().len();
-        if self.selected_row >= len { self.selected_row = 0; }
-        crate::update::select_row(self.menus[idx].table_mut(), self.selected_row);
-
+        if self.selected_rows[idx] >= len {
+            self.selected_rows[idx] = 0;
+        }
+        if matches!(self.current_menu, MenuIndex::OrderMenu) {
+            let sel_row = self.selected_rows[idx];
+            crate::update::select_row(self.menus[idx].table_mut(), sel_row);
+        }
     }
 }
 
@@ -121,7 +139,7 @@ pub fn create_initial_state() -> State {
             ])),
         ],
         current_menu: MenuIndex::MainMenu,
-        selected_row: 0,
+        selected_rows: [0, 0, 0],
         toppings_catalog,
         prebuilt_pizzas,
     }

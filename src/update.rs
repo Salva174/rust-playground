@@ -30,33 +30,40 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
 
     match input {
         InputEvent::Up => {
-            if state.selected_row > 0 {
-                state.selected_row -= 1;
+            let length = state.current_menu_mut().table_mut().rows_mut().len();
+            let sel_row = state.selected_row();
+            if sel_row > 0 {
+                state.set_selected_row(sel_row -1) ;
             } else {
-                state.selected_row = state.current_menu_mut().table_mut().rows_mut().len() - 1;
+                state.set_selected_row(length.saturating_sub(1));
             }
         }
         InputEvent::Down => {
-            if state.selected_row < state.current_menu_mut().table_mut().rows_mut().len() - 1 {
-                state.selected_row += 1;
+            let length = state.current_menu_mut().table_mut().rows_mut().len();
+            let sel_row = state.selected_row();
+            if sel_row + 1 < length {
+                state.set_selected_row(sel_row + 1);
             } else {
-                state.selected_row = 0;
+                state.set_selected_row(0);
             }
         }
         InputEvent::Back => {
             state.current_menu = MenuIndex::MainMenu;
+            state.apply_selection_marker();
+            return false;
         }
         InputEvent::Enter => {
-            let len = state.prebuilt_pizzas.len();
-            let custom_row = len; // letzte Zeile ist Custom (nach n Pizzen eingefügt)
+            let sel_row = state.selected_row();
+            let length = state.prebuilt_pizzas.len();
+            let custom_row = length; // letzte Zeile ist Custom (nach n Pizzen eingefügt)
 
-            if state.selected_row == custom_row {
+            if sel_row == custom_row {
                 let base_price = 6;
                 if let Err(e) = order_custom_pizza(stdout, stdin, &state.toppings_catalog, base_price) {
                     writeln!(stdout, "Fehler im Custom-Pizza-Dialog: {e}.").ok();
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
                 }
-            } else if let Some(p) = state.prebuilt_pizzas.get(state.selected_row) {
+            } else if let Some(p) = state.prebuilt_pizzas.get(sel_row) {
                 writeln!(stdout, "\n\x1b[4;32mBestellung bestätigt\x1b[0m: \x1b[1m{}\x1b[0m ({}.00$).", p.name, p.total_price()).ok();
                 wait_enter(stdout, stdin, "\n[OK mit Enter]").ok();
             } else {
@@ -67,9 +74,7 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
         _ => {}
     }
 
-    let selected_row = state.selected_row;
-
-    select_row(state.current_menu_mut().table_mut(), selected_row);
+   state.apply_selection_marker();
 
     false
 }
@@ -78,26 +83,34 @@ fn main_menu_update(input: InputEvent, state: &mut State) -> bool {
 
     match input {
         InputEvent::Up => {
-            if state.selected_row > 0 {
-                state.selected_row -= 1;
+            let length = state.current_menu_mut().table_mut().rows_mut().len();
+            let sel_row = state.selected_row();
+            if sel_row > 0 {
+                state.set_selected_row(sel_row -1) ;
             } else {
-                state.selected_row = state.current_menu_mut().table_mut().rows_mut().len() - 1;
+                state.set_selected_row(length.saturating_sub(1));
             }
         }
         InputEvent::Down => {
-            if state.selected_row < state.current_menu_mut().table_mut().rows_mut().len() - 1 {
-                state.selected_row += 1;
+            let length = state.current_menu_mut().table_mut().rows_mut().len();
+            let sel_row = state.selected_row();
+            if sel_row + 1 < length {
+                state.set_selected_row(sel_row + 1);
             } else {
-                state.selected_row = 0;
+                state.set_selected_row(0);
             }
         }
         InputEvent::Enter => {
-            match state.selected_row {
+            match state.selected_row() {
                 0 => {
                     state.refresh_order_menu();
                     state.current_menu = MenuIndex::OrderMenu;
+                    state.apply_selection_marker();
                 },
-                1 => state.current_menu = MenuIndex::EditToppingsMenu,
+                1 => {
+                    state.current_menu = MenuIndex::EditToppingsMenu;
+                    state.apply_selection_marker();
+                },
                 2 => return true,
                 _ => todo!()
             }
@@ -108,9 +121,7 @@ fn main_menu_update(input: InputEvent, state: &mut State) -> bool {
         _ => {}
     }
 
-    let selected_row = state.selected_row;
-
-    select_row(state.current_menu_mut().table_mut(), selected_row);
+   state.apply_selection_marker();
 
     false
 }
@@ -119,22 +130,26 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
 
     match input {
         InputEvent::Up => {
-            if state.selected_row > 0 {
-                state.selected_row -= 1;
+            let length = state.current_menu_mut().table_mut().rows_mut().len();
+            let sel_row = state.selected_row();
+            if sel_row > 0 {
+                state.set_selected_row(sel_row -1) ;
             } else {
-                state.selected_row = state.current_menu_mut().table_mut().rows_mut().len() - 1;
+                state.set_selected_row(length.saturating_sub(1));
             }
         }
         InputEvent::Down => {
-            if state.selected_row < state.current_menu_mut().table_mut().rows_mut().len() - 1 {
-                state.selected_row += 1;
+            let length = state.current_menu_mut().table_mut().rows_mut().len();
+            let sel_row = state.selected_row();
+            if sel_row + 1 < length {
+                state.set_selected_row(sel_row + 1);
             } else {
-                state.selected_row = 0;
+                state.set_selected_row(0);
             }
         }
         InputEvent::Enter => {
             let file_path = "toppings_text";
-            match state.selected_row {
+            match state.selected_row() {
                 0 => {
                     let _ = clear_screen(stdout);
                     if let Err(e) = add_toppings(stdout, stdin) {
@@ -172,9 +187,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
         _ => {}
     }
 
-    let selected_row = state.selected_row;
-
-    select_row(state.current_menu_mut().table_mut(), selected_row);
+    state.apply_selection_marker();
 
     false
 }
