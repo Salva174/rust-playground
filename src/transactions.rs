@@ -1,7 +1,42 @@
+use std::ffi::CStr;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
-use chrono::Local;
+use std::ptr;
+use libc::{localtime_r, strftime, time, time_t, tm};
 use pizzeria_lib::types::Topping;
+
+
+//Zeitstempel über libc
+fn now_local_timestamp() -> String {
+    unsafe {
+        let now_time: time_t = time(ptr::null_mut());
+        let mut local_time: tm = std::mem::zeroed();
+
+        if localtime_r(&now_time, &mut local_time).is_null() {
+            return String::from("1970-01-01 00:00:00");     //Fallback
+        }
+
+        //"YYYY-MM-DD HH:MM:SS" -> max 19 + NUL
+        let mut buf = [0u8; 32];
+        let format = b"%Y-%m-%d %H:%M:%S\0";
+
+        let written = strftime(
+            buf.as_mut_ptr() as *mut _,
+            buf.len(),
+            format.as_ptr() as *const _,
+            &local_time as *const tm,
+        );
+
+        if written == 0 {
+            return String::from("1970-01-01 00:00:00");     //Fallback
+        }
+
+        // C-String -> Rust-String
+        let cstr = CStr::from_ptr(buf.as_ptr() as *const i8);
+        cstr.to_string_lossy().into_owned()
+
+    }
+}
 
 fn format_eur_cents(cents: u32) -> String {
     let euros = cents / 100;
@@ -10,7 +45,7 @@ fn format_eur_cents(cents: u32) -> String {
 }
 
 pub fn log_transaction(path: &str, price_cents: u32, name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    let now = now_local_timestamp();
     let clean_name = name.replace('\n'," ").replace('\r', " ");
     let line = format!("{now};{};{}\n", format_eur_cents(price_cents), clean_name);
 
