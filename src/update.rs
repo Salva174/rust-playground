@@ -12,7 +12,10 @@ use crate::custom_toppings::{add_toppings, remove_topping};
 use crate::input::{read_input, InputEvent};
 use crate::render::render_menu;
 use crate::state::{MenuIndex, State};
+use crate::transactions::{log_custom_pizza, log_transaction};
 use crate::ui::wait_enter;
+
+const LOG_PATH: &str = "transactions.log";
 
 pub fn update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin) -> bool {
 
@@ -66,6 +69,10 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
                 }
             } else if let Some(p) = state.prebuilt_pizzas.get(sel_row) {
                 writeln!(stdout, "\n\x1b[4;32mBestellung bestätigt\x1b[0m: \x1b[1m{}\x1b[0m ({}.00$).", p.name, p.total_price()).ok();
+                let price_cents = p.total_price() * 100;
+                if let Err(e) = log_transaction(LOG_PATH, price_cents, &p.name) {
+                    writeln!(stdout, "Warnung: Konnte Transaktion nicht loggen: {e}").ok();
+                }
                 wait_enter(stdout, stdin, "\n[OK mit Enter]").ok();
             } else {
                 writeln!(stdout, "Ungültige Auswahl.").ok();
@@ -323,6 +330,9 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
                         },
                     };
                     writeln!(stdout, "Gesamtpreis: \x1b[4;30m{}.00$\x1b[0m", pizza.total_price())?;
+                    if let Err(e) = log_custom_pizza(LOG_PATH, base_price, available_toppings, &qty, true) {
+                        writeln!(stdout, "Warnung: Konnte Transaktion nicht loggen: {e}").ok();
+                    }
                     wait_enter(stdout, stdin, "\n[OK mit Enter]")?;
                     return Ok(());
                 } else if selected_row == clear_row {

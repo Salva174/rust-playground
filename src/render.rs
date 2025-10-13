@@ -15,9 +15,9 @@ pub fn render_menu(
 
     for line in footer {
         if !line.is_empty() {
-            writeln!(stdout)?;
-        } else {
             writeln!(stdout, "{line}")?;
+        } else {
+            writeln!(stdout)?;
         }
     }
     Ok(())

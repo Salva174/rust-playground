@@ -16,4 +16,5 @@ path = "src/raw_terminal.rs"
 [dependencies]
 pizzeria-lib = { path = "pizzeria-lib" }
 libc = "0.2.176"
+chrono = { version = "0.4", features = ["clock"] }
 
