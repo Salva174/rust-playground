@@ -164,7 +164,7 @@ pub fn build_order_menu(prebuilt: &[Pizza]) -> TableMenu {
             table.push(TableRow::new(vec![
                 TableCell::new(" ".into()),
                 TableCell::new(format!("{}:", i + 1)),
-                TableCell::new(format!("{}", p.name)),
+                TableCell::new(p.name.to_string()),
                 TableCell::new_with_alignment(format!("{}.00$", p.total_price()), Right),
             ]));
         }
@@ -185,12 +185,12 @@ pub fn build_order_menu_error(err_msg: &str) -> TableMenu {
         TableRow::new(vec![
             TableCell::new(" ".into()),
             TableCell::new("! ".into()),
-            TableCell::new(format!("Fehler beim Laden der Prebuilt-Pizzen:")),
+            TableCell::new(String::from("Fehler beim Laden der Prebuilt-Pizzen:")),
         ]),
         TableRow::new(vec![
             TableCell::new(" ".into()),
             TableCell::new(" ".into()),
-            TableCell::new(format!("{err_msg}")),
+            TableCell::new(String::from(err_msg)),
         ]),
         TableRow::new(vec![
             TableCell::new(" ".into()),

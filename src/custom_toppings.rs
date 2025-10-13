@@ -24,7 +24,7 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, path: &str) -> io:
     let reader = BufReader::new(file);
     let mut lines: Vec<String> = reader
         .lines()
-        .filter_map(Result::ok)
+        .map_while(Result::ok)
         .filter(|l| !l.trim().is_empty())
         .collect();
 

@@ -46,7 +46,7 @@ fn format_eur_cents(cents: u32) -> String {
 
 pub fn log_transaction(path: &str, price_cents: u32, name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let now = now_local_timestamp();
-    let clean_name = name.replace('\n'," ").replace('\r', " ");
+    let clean_name = name.replace(['\n', '\r'], " ");
     let line = format!("{now};{};{}\n", format_eur_cents(price_cents), clean_name);
 
     let file = OpenOptions::new().create(true).append(true).open(path)?;
