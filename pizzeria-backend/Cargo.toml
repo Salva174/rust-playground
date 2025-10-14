@@ -5,4 +5,4 @@ edition = "2024"
 
 [dependencies]
 axum = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, version = "1.47.1", features = ["rt", "rt-multi-thread", "macros"] }

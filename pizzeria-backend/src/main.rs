@@ -1,4 +1,32 @@
+use std::fs;
+use std::path::Path;
+use axum::http::StatusCode;
+use axum::Router;
+use axum::routing::get;
 
-fn main() {
-    println!("Hello World!");
+#[tokio::main]
+async fn main() {
+    let app = Router::new()
+        .route("/", get(root));
+
+    let address = "127.0.0.1:3000";
+    let listener = tokio::net::TcpListener::bind(address).await
+        .expect(&format!("Failed to bind address {address}"));
+
+    eprintln!("Server listening at {address}...");
+    axum::serve(listener, app).await
+        .expect("Error while starting server");
+}
+
+async fn root() -> (StatusCode, String) {
+    let path = Path::new("pizza_prebuilds_text");
+    match fs::read_to_string(path) {
+        Ok(prebuilds) => {
+            (StatusCode::OK, prebuilds)
+        }
+        Err(error) => {
+            eprintln!("Error while reading file {path:?}: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, String::from(""))
+        }
+    }
 }
