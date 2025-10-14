@@ -2,6 +2,7 @@
 members = [
     "pizzeria-frontend",
     "pizzeria-lib",
+    "pizzeria-backend",
 ]
 
 resolver = "3"
