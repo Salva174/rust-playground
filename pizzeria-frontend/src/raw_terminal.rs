@@ -6,7 +6,9 @@ use pizzeria_frontend::render::render;
 use pizzeria_frontend::update::update;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-
+    pizzeria_frontend::http::read_pizza_prebuilds().unwrap();   //todo: remove
+    std::process::exit(0);
+    
     let mut stdout = std::io::stdout();
     let mut stdin = std::io::stdin();
 

@@ -6,10 +6,11 @@ use axum::routing::get;
 
 #[tokio::main]
 async fn main() {
+
     let app = Router::new()
         .route("/", get(root));
 
-    let address = "127.0.0.1:3000";
+    let address = "127.0.0.1:3333";
     let listener = tokio::net::TcpListener::bind(address).await
         .expect(&format!("Failed to bind address {address}"));
 
