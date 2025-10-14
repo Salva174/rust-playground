@@ -1,0 +1,12 @@
+[package]
+name = "pizzeria-frontend"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "raw"
+path = "src/raw_terminal.rs"
+
+[dependencies]
+pizzeria-lib = { path = "../pizzeria-lib" }
+libc = "0.2.176"

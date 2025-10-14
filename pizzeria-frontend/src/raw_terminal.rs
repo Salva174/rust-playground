@@ -1,9 +1,9 @@
 use std::io::Write;
 use std::os::fd::AsRawFd;
-use rust_playground::input::{read_input, InputEvent};
-use rust_playground::state::create_initial_state;
-use rust_playground::render::render;
-use rust_playground::update::update;
+use pizzeria_frontend::input::{read_input, InputEvent};
+use pizzeria_frontend::state::create_initial_state;
+use pizzeria_frontend::render::render;
+use pizzeria_frontend::update::update;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
