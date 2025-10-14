@@ -19,6 +19,7 @@ async fn main() {
 }
 
 async fn root() -> (StatusCode, String) {
+    eprintln!("Received request for pizza prebuilds.");
     let path = Path::new("pizza_prebuilds_text");
     match fs::read_to_string(path) {
         Ok(prebuilds) => {

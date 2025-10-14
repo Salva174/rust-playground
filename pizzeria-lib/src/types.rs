@@ -6,11 +6,6 @@ pub fn load_toppings_from_file(path: &str) -> io::Result<Vec<Topping>> {
     parse_toppings(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-pub fn load_prebuild_pizzas_from_file(path: &str, available: &[Topping]) -> io::Result<Vec<Pizza>> {
-    let content = fs::read_to_string(path)?;
-    parse_prebuild_pizza(&content, available).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-}
-
 pub fn parse_toppings(content: &str) -> Result<Vec<Topping>, String> {
     let mut toppings = Vec::new();
 
