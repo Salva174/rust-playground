@@ -6,3 +6,10 @@ members = [
 ]
 
 resolver = "3"
+
+[workspace.dependencies]
+pizzeria-lib = { path = "pizzeria-lib" }
+
+axum = "0.8.6"
+libc = "0.2.176"
+tokio = "1.47.1"

@@ -8,5 +8,5 @@ name = "raw"
 path = "src/raw_terminal.rs"
 
 [dependencies]
-pizzeria-lib = { path = "../pizzeria-lib" }
-libc = "0.2.176"
+pizzeria-lib = { workspace = true }
+libc = { workspace = true }
