@@ -1,9 +1,9 @@
 use std::io;
-use std::io::{BufRead, BufReader, Error, Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::str::FromStr;
 
-pub fn read_pizza_prebuilds() -> io::Result<()> {
+pub fn read_pizza_prebuilds() -> io::Result<String> {
     let mut stream = TcpStream::connect("127.0.0.1:3333")?;
 
     stream.write_all(b"GET / HTTP/1.1\r
@@ -15,39 +15,35 @@ Accept: */*\r
     stream.flush()?;
 
     let body = parse_http_response_body(stream)?;
-    Ok(())
+    Ok(body)
 }
 
 fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
     let mut reader = BufReader::new(stream);
     let mut content_length = None;
-    let mut lines = reader.lines();
-    // for line in lines {
+    let mut buffer = String::new();
+
     loop {
-        if let Some(line) = lines.next() {
+        buffer.clear();
+        let read_bytes = reader.read_line(&mut buffer)?;
+        if read_bytes > 0 {
+            let line = &buffer.trim();
             println!("{line:?}");
-            match line {
-                Ok(line) => {
-                    if let Some(value) = line.strip_prefix("content-length: ") {
-                        let value = usize::from_str(value)
-                            .unwrap();  //todo: handle error
-                        content_length = Some(value);
-                    } else if line.is_empty() {
-                        break;
-                    }
-                }
-                Err(error) => {
-                    eprintln!("Error while reading line from HTTP response: {error}")
-                }
+            if let Some(value) = line.strip_prefix("content-length: ") {
+                let value = usize::from_str(value)
+                    .unwrap();  //todo: handle error
+                content_length = Some(value);
+            } else if line.is_empty() {
+                break;
             }
         } else { break }
     }
     if let Some(content_length) = content_length {
-        // let mut buffer = vec![content_length];
-        // reader.read_exact(&mut buffer);
-        let body: Result<String, Error> = lines.collect();
+        let mut buffer = vec![0; content_length];
+        reader.read_exact(&mut buffer)?;
+        let body = String::from_utf8(buffer).unwrap();
         println!("{body:?}");
-        Ok(body?)
+        Ok(body)
     } else {
         Err(io::Error::new(io::ErrorKind::InvalidInput, "No content length header in server response, while reading pizza prebuilds."))
     }
