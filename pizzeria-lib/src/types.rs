@@ -1,10 +1,4 @@
 use std::collections::HashMap;
-use std::{fs, io};
-
-pub fn load_toppings_from_file(path: &str) -> io::Result<Vec<Topping>> {
-    let content = fs::read_to_string(path)?;
-    parse_toppings(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-}
 
 pub fn parse_toppings(content: &str) -> Result<Vec<Topping>, String> {
     let mut toppings = Vec::new();
