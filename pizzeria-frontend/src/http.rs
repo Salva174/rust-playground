@@ -18,6 +18,25 @@ Accept: */*\r
     Ok(body)
 }
 
+pub fn send_transaction_record(transaction_record: String) -> io::Result<()> {
+    let mut stream = TcpStream::connect("127.0.0.1:3333")?;
+    let transaction_record_length = transaction_record.len();
+
+    stream.write_all(format!("POST /transaction HTTP/1.1\r
+Host: 127.0.0.1:3333\r
+content-type: text/plain; charset=utf-8\r
+content-length: {transaction_record_length}\r
+\r
+{transaction_record}").as_bytes())?;
+    stream.flush()?;
+
+    let _ = parse_http_response_body(stream)?; //receive empty body to avoid connection closing before server responded
+
+    //todo: validate response status code is successful
+
+    Ok(())
+}
+
 fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
     let mut reader = BufReader::new(stream);
     let mut content_length = None;
