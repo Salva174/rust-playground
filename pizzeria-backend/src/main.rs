@@ -2,13 +2,14 @@ use std::fs;
 use std::path::Path;
 use axum::http::StatusCode;
 use axum::Router;
-use axum::routing::get;
+use axum::routing::{get, post};
 
 #[tokio::main]
 async fn main() {
 
     let app = Router::new()
-        .route("/", get(root));
+        .route("/", get(root))
+        .route("/transaction", post(store_transaction));
 
     let address = "127.0.0.1:3333";
     let listener = tokio::net::TcpListener::bind(address).await
@@ -31,4 +32,10 @@ async fn root() -> (StatusCode, String) {
             (StatusCode::INTERNAL_SERVER_ERROR, String::from(""))
         }
     }
+}
+
+async fn store_transaction(transaction_record: String) -> StatusCode {
+    eprintln!("Received request to store transaction record '{transaction_record}'.");
+    //todo: implement
+    StatusCode::OK
 }
