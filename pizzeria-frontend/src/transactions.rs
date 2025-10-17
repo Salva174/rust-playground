@@ -57,6 +57,12 @@ pub fn log_transaction(path: &str, price_cents: u32, name: &str) -> Result<(), B
     Ok(())
 }
 
+pub fn log_transaction_as_string(price_cents: u32, name: &str) -> String {
+    let now = now_local_timestamp();
+    let clean_name = name.replace(['\n', '\r'], " ");
+    format!("{now};{};{}", format_eur_cents(price_cents), clean_name).to_string()
+}
+
 pub fn build_custom_name(available: &[Topping], qty: &[u32], include_qty: bool) -> String {
     let mut parts = Vec::new();
     for (i, &q) in qty.iter().enumerate() {
@@ -95,4 +101,16 @@ pub fn log_custom_pizza(
     log_transaction(path, total_cents, &name).expect("should log transactions");
 
     Ok(())
+}
+
+pub fn log_custom_pizza_as_string(
+    base_price_eur: u32,
+    available: &[Topping],
+    qty: &[u32],        //Anzahl Toppings
+    include_qty_in_name: bool
+) -> String {
+    let name = build_custom_name(available, qty, include_qty_in_name);
+    let total_cents = calc_custom_total_cents(base_price_eur, available, qty);
+    log_transaction_as_string(total_cents, &name)
+
 }
