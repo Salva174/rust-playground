@@ -5,7 +5,7 @@ use pizzeria_lib::table::{Table, TableCell, TableRow};
 use pizzeria_lib::table::Align::Right;
 use pizzeria_lib::table_menu::TableMenu;
 use pizzeria_lib::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
-use crate::http::read_pizza_prebuilds;
+use crate::http::{read_pizza_prebuilds, read_toppings};
 
 pub struct State {
     pub menus: [TableMenu; 3],
@@ -40,7 +40,7 @@ impl State {
     }
 
     pub fn refresh_order_menu(&mut self) {
-        if let Ok(catalog) = load_toppings_from_file("pizza_toppings_text") {
+        if let Ok(catalog) = load_toppings_from_backend() {
             self.toppings_catalog = catalog;
         }
 
@@ -86,7 +86,7 @@ impl MenuIndex {
 }
 
 pub fn create_initial_state() -> State {
-    let toppings_catalog = load_toppings_from_file("pizza_toppings_text").unwrap_or_default();
+    let toppings_catalog = load_toppings_from_backend().unwrap_or_default();
 
     let (prebuilt_pizzas, order_menu) = match load_prebuilt_pizzas_from_backend(&toppings_catalog) {
         Ok(pz) => {
@@ -150,6 +150,12 @@ pub fn create_initial_state() -> State {
     }
 }
 
+pub fn load_toppings_from_backend() -> io::Result<Vec<Topping>> {
+    let body = read_toppings()?;
+    parse_toppings(&body)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
 pub fn load_prebuilt_pizzas_from_backend(available: &[Topping]) -> io::Result<Vec<Pizza>> {
     let body = read_pizza_prebuilds()?;
     parse_prebuild_pizza(&body, available)
@@ -158,12 +164,14 @@ pub fn load_prebuilt_pizzas_from_backend(available: &[Topping]) -> io::Result<Ve
 
 pub fn load_toppings_from_file(path: &str) -> io::Result<Vec<Topping>> {
     let content = fs::read_to_string(path)?;
-    parse_toppings(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    parse_toppings(&content)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 pub fn load_prebuilt_pizzas_from_file(path: &str, available:  &[Topping]) -> io::Result<Vec<Pizza>> {
     let content = fs::read_to_string(path)?;
-    parse_prebuild_pizza(&content, available).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    parse_prebuild_pizza(&content, available)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 pub fn build_order_menu(prebuilt: &[Pizza]) -> TableMenu {

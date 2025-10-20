@@ -1,17 +1,20 @@
 use tokio::fs;
 use std::path::Path;
+use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::Router;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
+use serde::Deserialize;
 
 #[tokio::main]
 async fn main() {
 
     let app = Router::new()
         .route("/", get(root))
-        .route("/transaction", post(store_transaction));
+        .route("/transaction", post(store_transaction))
+        .route("/toppings", get(get_toppings).post(add_topping).delete(delete_topping));
 
     let address = "127.0.0.1:3333";
     let listener = tokio::net::TcpListener::bind(address).await
@@ -23,8 +26,9 @@ async fn main() {
 }
 
 async fn root() -> (StatusCode, String) {
-    eprintln!("Received request for pizza prebuilds.");
+    eprintln!("Received request for Order Menu.");
     let path = Path::new("pizza_prebuilds_text");
+
     match fs::read_to_string(path).await {
         Ok(prebuilds) => {
             (StatusCode::OK, prebuilds)
@@ -65,3 +69,72 @@ async fn store_transaction(mut transaction_record: String) -> StatusCode {
         }
     }
 }
+
+async fn get_toppings() -> (StatusCode, String) {
+    eprintln!("Received request for Topping List.");
+    let path = Path::new("toppings_text");
+
+    match fs::read_to_string(path).await {
+        Ok(toppings) => {
+            (StatusCode::OK, toppings)
+        }
+        Err(err) => {
+            eprintln!("Error while reading file {path:?} {err}");
+            (StatusCode::INTERNAL_SERVER_ERROR, String::new())
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct DeleteParameters { name : String }
+
+async fn add_topping(body: String) -> StatusCode {
+    let mut line = body;
+    if !line.ends_with('\n') { line.push('\n');
+    }
+
+    match OpenOptions::new().create(true).append(true).open("toppings_text").await {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(line.as_bytes()).await {
+                eprintln!("write error: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            } else {
+                StatusCode::NO_CONTENT
+            }
+        }
+        Err(e) => {
+            eprintln!("open error: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
+
+async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
+
+    match fs::read_to_string("toppings_text").await {
+        Ok(content) => {
+            let mut kept = String::new();
+            for line in content.lines() {
+                let name = line.split('#').next().unwrap_or("");
+                if !name.eq_ignore_ascii_case(&p.name) {
+                    kept.push_str(line);
+                    kept.push('\n');
+                }
+            }
+            if let Err(e) = fs::write("toppings_text", kept).await {
+                eprintln!("write error: {e}");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
+            StatusCode::NO_CONTENT
+        }
+        Err(e) => {
+            eprintln!("read error: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
+
+
+//todo: - Toppinglist Tabelle wieder zum alten Table umwandeln + löschen fixen
+//      - Log Ausgabe für Toppings hinzufügen (bei Add/Del)
+//      - Backend-Ausgabe korrigieren ("Order Menu")

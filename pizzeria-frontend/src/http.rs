@@ -17,6 +17,21 @@ Accept: */*\r
     Ok(body)
 }
 
+pub fn read_toppings() -> io::Result<String> {
+    let mut stream = TcpStream::connect("127.0.0.1:3333")?;
+
+    stream.write_all(b"GET /toppings HTTP/1.1\r
+Host: 127.0.0.1:3333\r
+User-Agent: curl/8.5.0\r
+Accept: */*\r
+\r
+")?;
+    stream.flush()?;
+
+    let body = parse_http_response_body(stream)?;
+    Ok(body)
+}
+
 pub fn send_transaction_record(transaction_record: String) -> io::Result<()> {
     let mut stream = TcpStream::connect("127.0.0.1:3333")?;
     let transaction_record_length = transaction_record.len();
