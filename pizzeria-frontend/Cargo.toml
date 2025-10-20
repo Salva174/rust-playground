@@ -10,3 +10,4 @@ path = "src/raw_terminal.rs"
 [dependencies]
 pizzeria-lib = { workspace = true }
 libc = { workspace = true }
+tempfile = "3.23.0"

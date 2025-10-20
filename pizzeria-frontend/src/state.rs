@@ -1,4 +1,6 @@
+use std::io::Write;
 use std::{fs, io};
+use std::io::Stdout;
 use pizzeria_lib::table::{Table, TableCell, TableRow};
 use pizzeria_lib::table::Align::Right;
 use pizzeria_lib::table_menu::TableMenu;
@@ -11,6 +13,7 @@ pub struct State {
     pub selected_rows: [usize; 3],
     pub toppings_catalog: Vec<Topping>,
     pub prebuilt_pizzas: Vec<Pizza>,
+    pub pending_fallbacks: Vec<String>,
 }
 
 impl State {
@@ -143,6 +146,7 @@ pub fn create_initial_state() -> State {
         selected_rows: [0, 0, 0],
         toppings_catalog,
         prebuilt_pizzas,
+        pending_fallbacks: Vec::new(),
     }
 }
 
@@ -211,4 +215,39 @@ pub fn build_order_menu_error(err_msg: &str) -> TableMenu {
         ]),
     ]);
     TableMenu::new("Order Menu (Fehler)".into(), table)
+}
+
+#[derive(Clone)]
+pub struct TransactionRecord {
+    pub price_cents: u32,
+    pub name: String,
+}
+
+pub fn process_transaction_fallbacks(state: &mut State, stdout: &mut Stdout) {
+    let mut still_pending = Vec::new();
+    const LOG_PATH: &str = "transactions.log";
+
+    for transaction_record in state.pending_fallbacks.drain(..) {
+        if let Err(e) = append_line_sync(LOG_PATH, &transaction_record) {
+            writeln!(stdout, "Warnung: Fallback-Loggen fehlgeschlagen: {e}").ok();
+            still_pending.push(transaction_record);
+        }
+    }
+
+    state.pending_fallbacks = still_pending;
+}
+
+//sicherstellen, dass Zeile mit \n endet
+pub fn append_line_sync(path: &str, line: &str) -> std::io::Result<()> {
+    use std::io::Write;
+
+    let mut buf = line.as_bytes().to_vec();
+
+    if !buf.ends_with(b"\n") { buf.push(b'\n'); }
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+
+    file.write_all(&buf)
 }

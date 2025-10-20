@@ -1,14 +1,11 @@
 use std::io::Write;
 use std::os::fd::AsRawFd;
 use pizzeria_frontend::input::{read_input, InputEvent};
-use pizzeria_frontend::state::create_initial_state;
+use pizzeria_frontend::state::{create_initial_state, process_transaction_fallbacks};
 use pizzeria_frontend::render::render;
 use pizzeria_frontend::update::update;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // pizzeria_frontend::http::read_pizza_prebuilds().unwrap();   //todo: remove
-    // std::process::exit(0);
-    
     let mut stdout = std::io::stdout();
     let mut stdin = std::io::stdin();
 
@@ -29,6 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
             render(&mut stdout, &state)?;
+            process_transaction_fallbacks(&mut state, &mut stdout);
         }
     }
 

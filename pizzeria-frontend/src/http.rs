@@ -1,7 +1,6 @@
 use std::io;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
-use std::str::FromStr;
 
 pub fn read_pizza_prebuilds() -> io::Result<String> {
     let mut stream = TcpStream::connect("127.0.0.1:3333")?;
@@ -30,7 +29,23 @@ content-length: {transaction_record_length}\r
 {transaction_record}").as_bytes())?;
     stream.flush()?;
 
-    let _ = parse_http_response_body(stream)?; //receive empty body to avoid connection closing before server responded
+    let mut reader = BufReader::new(stream);
+    let mut status_line = String::new();
+    reader.read_line(&mut status_line)?;
+    let code = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|str| str.parse::<u16>().ok())
+        .unwrap_or(0);
+
+    if !(200..300).contains(&code) {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!("backend returned HTTP {}", code),
+        ));
+    }
+
+    let _ = parse_http_response_body(reader)?; //receive empty body to avoid connection closing before server responded
 
     //todo: validate response status code is successful
 
@@ -39,39 +54,54 @@ content-length: {transaction_record_length}\r
 
 fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
     let mut reader = BufReader::new(stream);
-    let mut content_length = None;
+    let mut content_length: Option<usize> = None;
     let mut buffer = String::new();
 
     loop {
         buffer.clear();
         let read_bytes = reader.read_line(&mut buffer)?;
-        if read_bytes > 0 {
-            let line = &buffer.trim();
-            println!("{line:?}");
-            if let Some(value) = line.strip_prefix("content-length: ") {
-                let value = usize::from_str(value)
-                    .unwrap();  //todo: handle error
-                content_length = Some(value);
-            } else if line.is_empty() {
-                break;
+        if read_bytes == 0 {
+            break;      //Verbindung zu
+        }
+        let line = &buffer.trim();
+        println!("{line:?}");
+
+        if line.is_empty() {
+            break;      //Header ende
+        }
+
+        if let Some((name, value)) = line.split_once(':') {
+            if name.eq_ignore_ascii_case("content-length") {
+                let len = value.trim().parse::<usize>()
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Invalid Content-Length: {e}")))?;
+                content_length = Some(len);
             }
-        } else { break }
+        }
     }
-    if let Some(content_length) = content_length {
-        let mut buffer = vec![0; content_length];
-        reader.read_exact(&mut buffer)?;
-        let body = String::from_utf8(buffer).unwrap();
-        println!("{body:?}");
-        Ok(body)
-    } else {
-        Err(io::Error::new(io::ErrorKind::InvalidInput, "No content length header in server response, while reading pizza prebuilds."))
+
+    let n = content_length.unwrap_or(0);
+
+    if n == 0 {
+        // Kein Body -> leeren String zurückgeben
+        return Ok(String::new());
     }
+
+    let mut body_buffer = vec![0u8; n];
+    reader.read_exact(&mut body_buffer)?;
+    let body = String::from_utf8(body_buffer)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    println!("{body:?}");
+    Ok(body)
 }
 
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
     use super::*;
+    use tempfile::tempdir;
+    use std::{env, fs};
+    use crate::state::append_line_sync;
+    use crate::transactions::format_transaction_as_string;
 
     #[test]
     fn test_parse_http_response_body() -> Result<(), Box<dyn std::error::Error>> {
@@ -87,5 +117,34 @@ body-text");
         assert_eq!(result, String::from("body-text"));
 
         Ok(())
+    }
+
+    #[test]
+    fn fallback_writes_log_when_backend_is_down() {
+        // 1) isoliertes Arbeitsverzeichnis
+        let tmp = tempdir().unwrap();
+        let old = env::current_dir().unwrap();
+        env::set_current_dir(tmp.path()).unwrap();
+        const LOG_PATH: &str = "transactions.log";
+
+
+        // 2) Transaktionszeile bauen
+        let mut line = format_transaction_as_string(700, "TestPizza");
+        if !line.ends_with('\n') { line.push('\n'); }
+
+        // 3) Backend absichtlich NICHT starten ⇒ send schlägt fehl
+        if let Err(_e) = send_transaction_record(line.clone()) {
+            // 4) Fallback: direkt in Datei schreiben (ohne State)
+            append_line_sync(LOG_PATH, &line).expect("fallback write failed");
+        } else {
+            panic!("Expected backend error, but request succeeded");
+        }
+
+        // 5) prüfen, dass Log geschrieben wurde
+        let content = fs::read_to_string(LOG_PATH).unwrap();
+        assert!(content.contains("TestPizza"));
+
+        // 6) CWD zurück
+        env::set_current_dir(old).unwrap();
     }
 }

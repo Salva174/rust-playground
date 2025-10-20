@@ -13,10 +13,8 @@ use crate::http::send_transaction_record;
 use crate::input::{read_input, InputEvent};
 use crate::render::render_menu;
 use crate::state::{MenuIndex, State};
-use crate::transactions::{log_custom_pizza, log_custom_pizza_as_string, log_transaction, log_transaction_as_string};
+use crate::transactions::{format_custom_pizza_as_transaction_string, format_transaction_as_string};
 use crate::ui::{confirm, wait_enter};
-
-const LOG_PATH: &str = "transactions.log";
 
 pub fn update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin) -> bool {
 
@@ -64,18 +62,31 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
 
             if sel_row == custom_row {
                 let base_price = 6;
+
+                match order_custom_pizza(stdout, stdin, &state.toppings_catalog, base_price) {
+                    Ok(Some(line)) => {
+                        state.pending_fallbacks.push(line);
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        writeln!(stdout, "Fehler im Custom-Pizza-Dialog: {e}.").ok();
+                        wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
+                    }
+                }
+
                 if let Err(e) = order_custom_pizza(stdout, stdin, &state.toppings_catalog, base_price) {
                     writeln!(stdout, "Fehler im Custom-Pizza-Dialog: {e}.").ok();
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
                 }
             } else if let Some(p) = state.prebuilt_pizzas.get(sel_row) {
                 writeln!(stdout, "\n\x1b[4;32mBestellung bestätigt\x1b[0m: \x1b[1m{}\x1b[0m ({}.00$).", p.name, p.total_price()).ok();
+
                 let price_cents = p.total_price() * 100;
-                let transaction_string = log_transaction_as_string(price_cents, &p.name);
-                if let Err(e) = send_transaction_record(transaction_string) {
-                    writeln!(stdout, "Warnung: Konnte Transaktion nicht loggen: {e}").ok();
-                } else if let Err(e) = log_transaction(LOG_PATH, price_cents, &p.name) {
-                    writeln!(stdout, "Warnung: Konnte Transaktion nicht in datei loggen: {e}").ok();
+                let transaction_string = format_transaction_as_string(price_cents, &p.name);
+
+                if let Err(e) = send_transaction_record(transaction_string.clone()) {
+                    writeln!(stdout, "Warnung: Konnte Transaktion nicht an Backend senden: {e}").ok();
+                    state.pending_fallbacks.push(transaction_string);
                 }
                 wait_enter(stdout, stdin, "\n[OK mit Enter]").ok();
             } else {
@@ -232,7 +243,7 @@ fn clear_toppings_file(path: &str) -> io::Result<()> {
     File::create(path).map(|_| ())
 }
 
-pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_toppings: &[Topping], base_price: u32, ) -> Result<(), Box<dyn Error>> {
+pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_toppings: &[Topping], base_price: u32, ) -> Result<Option<String>, Box<dyn Error>> {
     let mut selected_row: usize = 0;
     let n = available_toppings.len();
     let checkout_row = n;
@@ -316,7 +327,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
             }
             InputEvent::Back => {
                 // Abbruch zurück zum Order-Menü
-                return Ok(());
+                return Ok(None);
             }
             InputEvent::Enter => {
                 if selected_row < n {
@@ -346,20 +357,28 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
                         },
                     };
                     writeln!(stdout, "Gesamtpreis: \x1b[4;30m{}.00$\x1b[0m", pizza.total_price())?;
-                    let transaction_string = log_custom_pizza_as_string(base_price, available_toppings, &qty, true);
-                    if let Err(e) = log_custom_pizza(LOG_PATH, base_price, available_toppings, &qty, true) {
-                        writeln!(stdout, "Warnung: Konnte Transaktion nicht loggen: {e}").ok();
-                    } else if let Err(e) = send_transaction_record(transaction_string) {
-                        writeln!(stdout, "Warnung: Konnte Transaktion nicht loggen: {e}").ok();
+                    let mut transaction_line = format_custom_pizza_as_transaction_string(
+                        base_price,
+                        available_toppings,
+                        &qty,
+                        true
+                    );
+
+                    if let Err(e) = send_transaction_record(transaction_line.clone()) {
+                        writeln!(stdout, "Warnung: Konnte Transaktion nicht an Backend senden: {e}").ok();
+                        wait_enter(stdout, stdin, "\n[OK mit Enter]")?;
+                        return Ok(Some(transaction_line));
                     }
+
                     wait_enter(stdout, stdin, "\n[OK mit Enter]")?;
-                    return Ok(());
+                    return Ok(None);
+
                 } else if selected_row == clear_row {
                     // Auswahl zurücksetzen
                     for q in &mut qty { *q = 0; }
                 } else {
                     // Back
-                    return Ok(());
+                    return Ok(None);
                 }
             }
             _ => {}

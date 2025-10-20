@@ -1,6 +1,4 @@
 use std::ffi::CStr;
-use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
 use std::ptr;
 use libc::{localtime_r, strftime, time, time_t, tm};
 use pizzeria_lib::types::Topping;
@@ -44,20 +42,7 @@ fn format_eur_cents(cents: u32) -> String {
     format!("{euros},{cents:02}")
 }
 
-pub fn log_transaction(path: &str, price_cents: u32, name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let now = now_local_timestamp();
-    let clean_name = name.replace(['\n', '\r'], " ");
-    let line = format!("{now};{};{}\n", format_eur_cents(price_cents), clean_name);
-
-    let file = OpenOptions::new().create(true).append(true).open(path)?;
-    let mut writer = BufWriter::new(file);
-    writer.write_all(line.as_bytes())?;
-    writer.flush()?;
-
-    Ok(())
-}
-
-pub fn log_transaction_as_string(price_cents: u32, name: &str) -> String {
+pub fn format_transaction_as_string(price_cents: u32, name: &str) -> String {
     let now = now_local_timestamp();
     let clean_name = name.replace(['\n', '\r'], " ");
     format!("{now};{};{}", format_eur_cents(price_cents), clean_name).to_string()
@@ -89,21 +74,7 @@ fn calc_custom_total_cents(base_price_eur: u32, available: &[Topping], qty: &[u3
     (base_price_eur + toppings_sum_eur) * 100
 }
 
-pub fn log_custom_pizza(
-    path: &str,
-    base_price_eur: u32,
-    available: &[Topping],
-    qty: &[u32],        //Anzahl Toppings
-    include_qty_in_name: bool
-) -> Result<(), Box<dyn std::error::Error>> {
-    let name = build_custom_name(available, qty, include_qty_in_name);
-    let total_cents = calc_custom_total_cents(base_price_eur, available, qty);
-    log_transaction(path, total_cents, &name).expect("should log transactions");
-
-    Ok(())
-}
-
-pub fn log_custom_pizza_as_string(
+pub fn format_custom_pizza_as_transaction_string(
     base_price_eur: u32,
     available: &[Topping],
     qty: &[u32],        //Anzahl Toppings
@@ -111,6 +82,5 @@ pub fn log_custom_pizza_as_string(
 ) -> String {
     let name = build_custom_name(available, qty, include_qty_in_name);
     let total_cents = calc_custom_total_cents(base_price_eur, available, qty);
-    log_transaction_as_string(total_cents, &name)
-
+    format_transaction_as_string(total_cents, &name)
 }
