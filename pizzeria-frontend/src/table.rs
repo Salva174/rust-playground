@@ -99,7 +99,7 @@ pub fn render_table(table: &Table, buffer: &mut String) {
 
 #[cfg(test)]
 mod tests {
-    use crate::table::*;
+    use crate::table::{render_table, Align, Table, TableCell, TableRow};
 
     #[test]
     fn test() -> Result<(), Box<dyn std::error::Error>> {
@@ -127,7 +127,7 @@ mod tests {
 
         render_table(&table, &mut buffer);
 
-        println!("{buffer}");
+        println!("{}", buffer);
 
         Ok(())
     }

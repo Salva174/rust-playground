@@ -3,24 +3,26 @@ use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::{BufRead, BufReader, BufWriter, Read, Stdin, Stdout, Write};
 use std::net::TcpStream;
-use pizzeria_lib::admin::toppings::list_toppings;
-use pizzeria_lib::clear_screen;
+use std::time::Duration;
+use crate::clear_screen;
+use crate::table::{Align, Table, TableCell, TableRow};
+use crate::table_menu::TableMenu;
 use crate::http::read_toppings;
 use crate::ui::{wait_enter, prompt};
 
 // Entfernen nach Nummer oder Name
 pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io::Result<()> {
 
-    let body = read_toppings()?; // GET /toppings (wie bei dir)
-    let mut lines: Vec<String> = body
+    let body = read_toppings()?;
+
+    list_toppings_from_str(stdout, &body)?;
+
+    let lines: Vec<String> = body
         .lines()
         .map(|l| l.trim().to_string())
         .filter(|l| !l.is_empty())
         .collect();
 
-    list_toppings_from_lines(stdout, &lines)?; // kleine Helper-Funktion, die statt Datei die lines rendert
-
-    // Eingabe erfragen
     let choice = prompt(stdin, stdout, "\nEintrag löschen (Nummer oder Name, 'q' zum Abbrechen): ")?;
     let choice = choice.trim();
     if choice.eq_ignore_ascii_case("q") || choice.is_empty() {
@@ -47,7 +49,7 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
     // Auswahl interpretieren
     let name_to_delete: String = if let Ok(idx1) = choice.parse::<usize>() {
         // Nummernbasiert (1..=len)
-        if idx1 == 0 || idx1 > lines.len() {
+        if !(1..=lines.len()).contains(&idx1) {
             writeln!(stdout, "Ungültige Nummer.")?;
             stdout.flush()?;
             wait_enter(stdout, stdin, "\n[Weiter mit Enter]")?;
@@ -57,7 +59,11 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
         entry.split('#').next().unwrap_or("").to_string()
     } else {
         // Namensbasiert: suche ersten Eintrag vor '#'
-        if let Some(pos) = lines.iter().position(|l| l.split('#').next().unwrap_or("").eq_ignore_ascii_case(choice)) {
+        if let Some(pos) = lines
+            .iter()
+            .position(|l| l.split('#').next().unwrap_or("")
+            .eq_ignore_ascii_case(choice))
+        {
             lines[pos].split('#').next().unwrap_or("").to_string()
         } else {
             writeln!(stdout, "Kein Eintrag mit diesem Namen gefunden.")?;
@@ -79,6 +85,12 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
         // let name = entry.split('#').next().unwrap_or(&entry).to_string();
         send_delete_topping(&name_to_delete)?;
         writeln!(stdout, "\x1b[1;31mEntfernt:\x1b[0m \x1b[1m{name}\x1b[0m", name = name_to_delete)?;
+        stdout.flush()?;
+
+        //neu laden und anzeigen
+        let body_after = read_toppings()?;
+        list_toppings_from_str(stdout, &body_after)?;
+        wait_enter(stdout, stdin, "\n[Weiter mit Enter]")?;
 
     Ok(())
 }
@@ -87,30 +99,43 @@ fn send_delete_topping(name: &str) -> io::Result<()> {
     use std::io::{Read, Write};
     use std::net::TcpStream;
 
+    let name_enc = urlencoding::encode(name);
     let mut stream = TcpStream::connect("127.0.0.1:3333")?;
-    let req = format!("DELETE /toppings?name={} HTTP/1.1\r
-Host: 127.0.0.1:3333\r
-Connection: close\r
-",
-url_encode(name)
+
+    let req = format!("DELETE /toppings?name={name} HTTP/1.1\r\n
+Host: 127.0.0.1:3333\r\n
+Connection: close\r\n
+\r\n",
+name = name_enc
 );
+
     stream.write_all(req.as_bytes())?;
     stream.flush()?;
 
-    let mut resp = String::new();
-    stream.read_to_string(&mut resp).ok();
-    let code = resp.split_whitespace().nth(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
-    if !(200..300).contains(&code) {
-        return Err(io::Error::new(io::ErrorKind::Other, format!("HTTP {}", code)));
+    let mut reader = BufReader::new(stream);
+    let mut status_line = String::new();
+    reader.read_line(&mut status_line)?;
+
+    let code = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse::<u16>().ok())
+        .unwrap_or(0);
+
+    let mut line = String::new();
+    loop {
+        line.clear();
+        let n = reader.read_line(&mut line)?;
+        if n == 0 { break; }
+        if line == "\r\n" || line.trim().is_empty() { break; }
     }
-    Ok(())
+
+    if (200..300).contains(&code) {
+        Ok(())
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, format!("HTTP {}", code)))
+    }
 }
-
-fn url_encode(s: &str) -> String {
-    s.replace(' ', "%20")
-}
-
-
 
 pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dyn Error>> {
     // let file_path = "toppings_text";
@@ -201,11 +226,42 @@ Connection: close\r
     Ok(())
 }
 
-fn list_toppings_from_lines(stdout: &mut Stdout, lines: &[String]) -> std::io::Result<()> {
-    writeln!(stdout, "\n\x1b[1;33mAktuelle Toppings\x1b[0m:")?;
-    for (i, l) in lines.iter().enumerate() {
-        let (name, price) = l.split_once('#').unwrap_or((l.as_str(), ""));
-        writeln!(stdout, "{:>2}: {:<20} {}", i + 1, name, price)?;
+fn list_toppings_from_str(stdout: &mut Stdout, content: &str) -> io::Result<()> {
+    let title_text = String::from("Aktuelle Toppings");
+    let mut table = Table::new(vec![]);
+
+    for (index, line) in content.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() { continue; }
+
+        let mut parts = line.split('#');
+        let name  = parts.next().unwrap_or("").trim();
+        let price = parts.next().unwrap_or("").trim();
+
+        table.push(TableRow::new(vec![
+            TableCell::new(format!("{}.", index + 1)),
+            TableCell::new(name.to_string()),
+            TableCell::new_with_alignment(format!("{}.00$", price), Align::Right),
+        ]));
     }
+
+    if table.is_empty() {
+        let table = Table::new(vec![
+            TableRow::new(vec![TableCell::new(String::from("Noch keine Toppings vorhanden!"))]),
+        ]);
+        let table_menu = TableMenu::new(title_text, table);
+        writeln!(stdout, "{table_menu}")?;
+        stdout.flush()?;
+        return Ok(());
+    }
+
+    let table_menu = TableMenu::new(title_text, table);
+    writeln!(stdout, "{table_menu}")?;
+    stdout.flush()?;
     Ok(())
+}
+
+pub fn list_toppings_from_backend(stdout: &mut Stdout) -> io::Result<()> {
+    let body = read_toppings()?;
+    list_toppings_from_str(stdout, &body)
 }

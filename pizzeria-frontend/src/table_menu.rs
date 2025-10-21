@@ -45,7 +45,7 @@ impl Display for TableMenu {
             if !table_line.is_empty() {
                 let padding_size = max_length - table_line.len();
                 let padding = " ".repeat(padding_size);
-                writeln!(f, "│  {table_line}{padding}  │")?;
+                writeln!(f, "│  {table_line}{padding}  │" )?;
             }
         }
         writeln!(f, "{bottom}")?;
@@ -119,9 +119,9 @@ mod tests {
             ])
         ]);
         let table_menu = TableMenu::new(title_text, table);
-        println!("{table_menu}");
+        println!("{}", table_menu);
 
-        assert_eq!(format!("{table_menu}").trim(), "
+        assert_eq!(format!("{}", table_menu).trim(), "
 ┌─────────────────────────┐
 │          Menu           │
 ├─────────────────────────┤
@@ -145,9 +145,9 @@ mod tests {
     ]);
 
     let table_menu = TableMenu::new(title_text, table);
-    println!("{table_menu}");
+    println!("{}", table_menu);
 
-    assert_eq!(format!("{table_menu}").trim(), "
+    assert_eq!(format!("{}", table_menu).trim(), "
 ┌────────────────────────────────┐
 │  Welcome to Salvatores Pizza!  │
 ├────────────────────────────────┤

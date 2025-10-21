@@ -124,7 +124,7 @@ impl Pizza {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::*;
+    use crate::types::{parse_toppings, Pizza, Topping};
 
     #[test]
     fn test_total_price_of_a_pizza_without_toppings() {

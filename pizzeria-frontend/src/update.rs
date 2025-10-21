@@ -2,13 +2,13 @@ use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::io::{Stdin, Stdout, Write};
-use pizzeria_lib::admin::toppings::list_toppings;
-use pizzeria_lib::clear_screen;
-use pizzeria_lib::table::{Table, TableCell, TableRow};
-use pizzeria_lib::table::Align::Right;
-use pizzeria_lib::table_menu::TableMenu;
-use pizzeria_lib::types::{Pizza, Topping};
-use crate::custom_toppings::{add_toppings, remove_topping};
+use crate::clear_screen;
+use crate::toppings::list_toppings;
+use crate::table::{Table, TableCell, TableRow};
+use crate::table::Align::Right;
+use crate::table_menu::TableMenu;
+use crate::types::{Pizza, Topping};
+use crate::custom_toppings::{add_toppings, list_toppings_from_backend, remove_topping};
 use crate::http::send_transaction_record;
 use crate::input::{read_input, InputEvent};
 use crate::render::render_menu;
@@ -188,7 +188,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
                 }
                 2 => {
                     let _ = clear_screen(stdout);
-                    if let Err(e) = list_toppings(stdout, file_path) {
+                    if let Err(e) = list_toppings_from_backend(stdout) {
                         writeln!(stdout, "Fehler {e}").ok();
                     }
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();

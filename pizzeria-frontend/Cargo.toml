@@ -8,6 +8,6 @@ name = "raw"
 path = "src/raw_terminal.rs"
 
 [dependencies]
-pizzeria-lib = { workspace = true }
 libc = { workspace = true }
 tempfile = "3.23.0"
+urlencoding = "2.1.3"

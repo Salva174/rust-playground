@@ -1,9 +1,10 @@
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::{BufWriter, BufRead, Stdin, Stdout, Write};
-use crate::clear_screen;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
+use crate::clear_screen;
+use crate::custom_toppings::list_toppings_from_backend;
 
 pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dyn std::error::Error>> {
 
@@ -55,7 +56,7 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<d
 
         if choice == "t" {
             clear_screen(stdout)?;
-            list_toppings(stdout, file_path)?;
+            list_toppings_from_backend(stdout)?;
             continue;
         }
 
@@ -149,14 +150,13 @@ pub fn list_toppings(stdout: &mut Stdout, path: &str) -> io::Result<()> {
             ])
         ]);
         let table_menu = TableMenu::new(title_text, table);
-        println!("{table_menu}");
+        println!("{}", table_menu);
         return Ok(());
     }
 
     let table_menu = TableMenu::new(title_text, table);
     // println!("{table_menu}");
-    writeln!(stdout, "{table_menu}")?;
+    writeln!(stdout, "{}", table_menu)?;
     stdout.flush()?;
     Ok(())
 }
-

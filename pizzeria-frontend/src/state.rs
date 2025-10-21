@@ -1,10 +1,10 @@
 use std::io::Write;
 use std::{fs, io};
 use std::io::Stdout;
-use pizzeria_lib::table::{Table, TableCell, TableRow};
-use pizzeria_lib::table::Align::Right;
-use pizzeria_lib::table_menu::TableMenu;
-use pizzeria_lib::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
+use crate::table::{Table, TableCell, TableRow};
+use crate::table::Align::Right;
+use crate::table_menu::TableMenu;
+use crate::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
 use crate::http::{read_pizza_prebuilds, read_toppings};
 
 pub struct State {

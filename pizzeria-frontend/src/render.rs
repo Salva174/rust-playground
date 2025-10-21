@@ -1,5 +1,5 @@
 use std::io::{Stdout, Write};
-use pizzeria_lib::table_menu::TableMenu;
+use crate::table_menu::TableMenu;
 use crate::state::{MenuIndex, State};
 
 pub fn render_menu(
@@ -34,5 +34,3 @@ pub fn render(stdout: &mut Stdout, state: &State) -> Result<(), Box<dyn std::err
 
     Ok(())
 }
-
-

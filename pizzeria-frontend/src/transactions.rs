@@ -1,7 +1,7 @@
 use std::ffi::CStr;
 use std::ptr;
 use libc::{localtime_r, strftime, time, time_t, tm};
-use pizzeria_lib::types::Topping;
+use crate::types::Topping;
 
 
 //Zeitstempel über libc

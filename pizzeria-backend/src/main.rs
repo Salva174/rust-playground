@@ -85,9 +85,6 @@ async fn get_toppings() -> (StatusCode, String) {
     }
 }
 
-#[derive(Deserialize)]
-struct DeleteParameters { name : String }
-
 async fn add_topping(body: String) -> StatusCode {
     let mut line = body;
     if !line.ends_with('\n') { line.push('\n');
@@ -109,8 +106,11 @@ async fn add_topping(body: String) -> StatusCode {
     }
 }
 
-async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
+#[derive(Deserialize)]
+struct DeleteParameters { name : String }
 
+async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
+    eprintln!("DELETE /toppings?name={}", p.name);
     match fs::read_to_string("toppings_text").await {
         Ok(content) => {
             let mut kept = String::new();
@@ -135,6 +135,6 @@ async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
 }
 
 
-//todo: - Toppinglist Tabelle wieder zum alten Table umwandeln + löschen fixen
+//todo: - nach löschen Ausgabe fixen
 //      - Log Ausgabe für Toppings hinzufügen (bei Add/Del)
 //      - Backend-Ausgabe korrigieren ("Order Menu")

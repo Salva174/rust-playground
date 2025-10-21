@@ -1,9 +1,9 @@
 use std::io::{Stdin, Stdout, Write};
 use std::fs;
-use pizzeria_lib::clear_screen;
-use pizzeria_lib::table::{Table, TableCell, TableRow};
-use pizzeria_lib::table_menu::TableMenu;
-use pizzeria_lib::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
+use pizzeria_frontend::clear_screen;
+use pizzeria_frontend::table::{Table, TableCell, TableRow};
+use pizzeria_frontend::table_menu::TableMenu;
+use pizzeria_frontend::types::{parse_prebuild_pizza, parse_toppings, Pizza, Topping};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
@@ -173,4 +173,3 @@ fn order_custom_pizza(stdout: &mut Stdout, stdin: &Stdin, available_toppings: &[
 
     Ok(())
 }
-
