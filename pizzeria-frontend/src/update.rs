@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io;
 use std::io::{Stdin, Stdout, Write};
 use crate::clear_screen;
-use crate::toppings::list_toppings;
 use crate::table::{Table, TableCell, TableRow};
 use crate::table::Align::Right;
 use crate::table_menu::TableMenu;
@@ -357,7 +356,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
                         },
                     };
                     writeln!(stdout, "Gesamtpreis: \x1b[4;30m{}.00$\x1b[0m", pizza.total_price())?;
-                    let mut transaction_line = format_custom_pizza_as_transaction_string(
+                    let transaction_line = format_custom_pizza_as_transaction_string(
                         base_price,
                         available_toppings,
                         &qty,

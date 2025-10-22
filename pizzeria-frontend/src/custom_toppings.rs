@@ -1,9 +1,7 @@
 use std::error::Error;
-use std::fs::{File, OpenOptions};
 use std::io;
-use std::io::{BufRead, BufReader, BufWriter, Read, Stdin, Stdout, Write};
+use std::io::{BufRead, BufReader, Read, Stdin, Stdout, Write};
 use std::net::TcpStream;
-use std::time::Duration;
 use crate::clear_screen;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
@@ -29,15 +27,6 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
         writeln!(stdout, "Abgebrochen.")?;
         return Ok(());
     }
-
-    // // Datei einlesen
-    // let file = File::open(path).or_else(|_| File::create(path))?;
-    // let reader = BufReader::new(file);
-    // let mut lines: Vec<String> = reader
-    //     .lines()
-    //     .map_while(Result::ok)
-    //     .filter(|l| !l.trim().is_empty())
-    //     .collect();
 
     if lines.is_empty() {
         writeln!(stdout, "Keine Toppings vorhanden.")?;
@@ -73,30 +62,22 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
         }
     };
 
-    // Zurückschreiben, falls etwas entfernt wurde
-    // if let Some(entry) = removed {
-        // let file = File::create(path)?;
-        // let mut writer = BufWriter::new(file);
-        // for l in &lines {
-        //     writeln!(writer, "{l}")?;
-        // }
-        // writer.flush()?;
-
         // let name = entry.split('#').next().unwrap_or(&entry).to_string();
         send_delete_topping(&name_to_delete)?;
-        writeln!(stdout, "\x1b[1;31mEntfernt:\x1b[0m \x1b[1m{name}\x1b[0m", name = name_to_delete)?;
-        stdout.flush()?;
-
+        clear_screen(stdout).expect("Should clear screen.");
+    
         //neu laden und anzeigen
         let body_after = read_toppings()?;
         list_toppings_from_str(stdout, &body_after)?;
-        wait_enter(stdout, stdin, "\n[Weiter mit Enter]")?;
+
+        writeln!(stdout, "\x1b[1;31mEntfernt:\x1b[0m \x1b[1m{name}\x1b[0m", name = name_to_delete)?;
+        stdout.flush()?;
 
     Ok(())
 }
 
 fn send_delete_topping(name: &str) -> io::Result<()> {
-    use std::io::{Read, Write};
+    use std::io::Write;
     use std::net::TcpStream;
 
     let name_enc = urlencoding::encode(name);
@@ -138,14 +119,6 @@ name = name_enc
 }
 
 pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dyn Error>> {
-    // let file_path = "toppings_text";
-    //
-    // // File-Writer einmal öffnen und für alle Adds nutzen
-    // let file = OpenOptions::new()
-    //     .create(true)
-    //     .append(true)
-    //     .open(file_path)?;
-    // let mut writer = BufWriter::new(file);
 
     loop {
         clear_screen(stdout)?;
@@ -182,9 +155,6 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
 
         let mut line = format!("{}#{}", topping_name, topping_price);
         if !line.ends_with('\n') { line.push('\n'); }
-
-        writeln!(stdout, "{}#{}", topping_name, topping_price)?;
-        stdout.flush()?;
 
         send_post("/toppings", &line)?;
 

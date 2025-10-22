@@ -79,7 +79,7 @@ fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
             break;      //Verbindung zu
         }
         let line = &buffer.trim();
-        println!("{line:?}");
+        // println!("{line:?}");
 
         if line.is_empty() {
             break;      //Header ende
@@ -105,7 +105,7 @@ fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
     reader.read_exact(&mut body_buffer)?;
     let body = String::from_utf8(body_buffer)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    println!("{body:?}");
+    // println!("{body:?}");
     Ok(body)
 }
 
@@ -147,9 +147,9 @@ body-text");
         let mut line = format_transaction_as_string(700, "TestPizza");
         if !line.ends_with('\n') { line.push('\n'); }
 
-        // 3) Backend absichtlich NICHT starten ⇒ send schlägt fehl
+        // 3) Backend absichtlich NICHT starten => send schlägt fehl
         if let Err(_e) = send_transaction_record(line.clone()) {
-            // 4) Fallback: direkt in Datei schreiben (ohne State)
+            // 4) Fallback: direkt in Datei schreiben 
             append_line_sync(LOG_PATH, &line).expect("fallback write failed");
         } else {
             panic!("Expected backend error, but request succeeded");
