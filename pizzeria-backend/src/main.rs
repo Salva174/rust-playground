@@ -86,13 +86,23 @@ async fn get_toppings() -> (StatusCode, String) {
 }
 
 async fn add_topping(body: String) -> StatusCode {
-    let mut line = body;
-    if !line.ends_with('\n') { line.push('\n');
+    let line = body.lines().next().unwrap_or("").trim();
+    let name = line.split('#').next().unwrap_or("").trim();
+
+    if name.is_empty() {
+        eprintln!("add_topping: empty name in body: {:?}", body);
+        return StatusCode::BAD_REQUEST;
     }
+
+    let mut to_write = String::with_capacity(name.len() + 1);
+    to_write.push_str(name);
+    to_write.push('\n');
+
+    println!("Received request to ADD Topping: '{}'.", name);
 
     match OpenOptions::new().create(true).append(true).open("toppings_text").await {
         Ok(mut file) => {
-            if let Err(e) = file.write_all(line.as_bytes()).await {
+            if let Err(e) = file.write_all(to_write.as_bytes()).await {
                 eprintln!("write error: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR
             } else {
@@ -110,7 +120,8 @@ async fn add_topping(body: String) -> StatusCode {
 struct DeleteParameters { name : String }
 
 async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
-    eprintln!("DELETE /toppings?name={}", p.name);
+    eprintln!("Received request to DELETE Topping '{}'.", p.name);
+
     match fs::read_to_string("toppings_text").await {
         Ok(content) => {
             let mut kept = String::new();
@@ -135,6 +146,4 @@ async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
 }
 
 
-//todo: - nach löschen Ausgabe fixen
-//      - Log Ausgabe für Toppings hinzufügen (bei Add/Del)
-//      - Backend-Ausgabe korrigieren ("Order Menu")
+//todo:     - DeleteList funktion an backend?
