@@ -11,24 +11,25 @@ use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use serde::Deserialize;
 
+
 #[tokio::main]
 async fn main() {
-
-    let configuration = config::load_configuration_from_environment_variables()
-        .expect("Failed to load configuration.");
 
     let app = Router::new()
         .route("/", get(root))
         .route("/transaction", post(store_transaction))
         .route("/toppings", get(get_toppings).post(add_topping).delete(delete_topping));
 
-    let address = SocketAddr::new(configuration.bind_host, configuration.bind_port);
+    let address = config::get_socket_address()
+        .expect("Failed to get socked address");
+
     let listener = tokio::net::TcpListener::bind(address).await
         .expect(&format!("Failed to bind address {address}"));
 
     eprintln!("Server listening at {address}...");
     axum::serve(listener, app).await
         .expect("Error while starting server");
+
 }
 
 async fn root() -> (StatusCode, String) {

@@ -1,6 +1,6 @@
 use std::env;
 use std::env::VarError;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
@@ -35,6 +35,15 @@ where <T as FromStr>::Err: std::error::Error + 'static {
         }
     };
     Ok(value)
+}
+
+pub fn get_socket_address() -> Result<SocketAddr, Box<dyn std::error::Error>> {
+    let configuration = load_configuration_from_environment_variables()?;
+    Ok(SocketAddr::new(configuration.bind_host, configuration.bind_port))
+}
+
+pub fn addr_string(cfg: &Config) -> String {
+    format!("{}:{}", cfg.bind_host, cfg.bind_port)
 }
 
 

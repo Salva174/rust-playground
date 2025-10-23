@@ -1,12 +1,65 @@
-use std::io;
+use std::{env, io};
+use std::env::VarError;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::net::TcpStream;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
 
+const BIND_HOST_KEY: &str = "PIZZERIA_BACKEND_BIND_HOST";
+const BIND_PORT_KEY: &str = "PIZZERIA_BACKEND_BIND_PORT";
+const BIND_HOST_DEFAULT: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
+const BIND_PORT_DEFAULT: u16 = 3333;
+
+fn backend_socket_addr() -> io::Result<SocketAddrV4> {
+    let host = match env::var(BIND_HOST_KEY) {
+        Ok(value) => value.parse::<Ipv4Addr>()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput,
+            format!("Ungültige {}: {} ({e})", BIND_HOST_KEY, value)))?,
+        Err(VarError::NotPresent) => BIND_HOST_DEFAULT,
+        Err(VarError::NotUnicode(_)) => {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+            format!("{} enthält keine gültige UTF-8-Zeichen", BIND_HOST_KEY)))
+        }
+    };
+
+    let port = match env::var(BIND_PORT_KEY) {
+        Ok(value) => value.parse::<u16>()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput,
+                                        format!("Ungültige {}: {} ({e})", BIND_PORT_KEY, value)))?,
+        Err(VarError::NotPresent) => BIND_PORT_DEFAULT,
+        Err(VarError::NotUnicode(_)) => {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                      format!("{} enthält keine gültige UTF-8-Zeichen", BIND_PORT_KEY)));
+        }
+    };
+
+    Ok(SocketAddrV4::new(host, port))
+}
+
+pub fn read_pizza_prebuilds_with_address(address: &str) -> io::Result<String> {
+    let addr_v4: SocketAddrV4 = address.parse()
+        .expect("Should parse address.");
+    let mut stream = TcpStream::connect(addr_v4)?;
+
+    write!(stream, "GET / HTTP/1.1\r
+Host: {address}r
+User-Agent: curl/8.5.0\r
+Accept: */*\r
+\r
+")?;
+    stream.flush()?;
+
+    let body = parse_http_response_body(stream)?;
+    Ok(body)
+}
+// todo: überprüfen und für weitere funktionen implementieren
 pub fn read_pizza_prebuilds() -> io::Result<String> {
-    let mut stream = TcpStream::connect("127.0.0.1:3333")?;
 
-    stream.write_all(b"GET / HTTP/1.1\r
-Host: 127.0.0.1:3333\r
+    let addr = backend_socket_addr()?;
+    let host_port = addr.to_string();
+
+    let mut stream = TcpStream::connect(addr)?;
+
+    write!(stream, "GET / HTTP/1.1\r
+Host: {host_port}r
 User-Agent: curl/8.5.0\r
 Accept: */*\r
 \r
@@ -111,12 +164,12 @@ fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
     use super::*;
-    use tempfile::tempdir;
-    use std::{env, fs};
     use crate::state::append_line_sync;
     use crate::transactions::format_transaction_as_string;
+    use std::io::Cursor;
+    use std::{env, fs};
+    use tempfile::tempdir;
 
     #[test]
     fn test_parse_http_response_body() -> Result<(), Box<dyn std::error::Error>> {

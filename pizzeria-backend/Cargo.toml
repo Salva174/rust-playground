@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+pizzeria-frontend = { path = "../pizzeria-frontend" }
 axum = { workspace = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "fs", "io-util"], version = "1.0.0" }
 serde = { version = "1.0.228", features = ["derive"] }
