@@ -5,8 +5,8 @@ use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
-    bind_host: IpAddr,
-    bind_port: u16,
+    pub bind_host: IpAddr,
+    pub bind_port: u16,
 }
 
 const BIND_HOST_KEY: &str = "PIZZERIA_BACKEND_BIND_HOST";

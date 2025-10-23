@@ -1,5 +1,6 @@
 mod config;
 
+use std::net::SocketAddr;
 use tokio::fs;
 use std::path::Path;
 use axum::extract::Query;
@@ -13,12 +14,15 @@ use serde::Deserialize;
 #[tokio::main]
 async fn main() {
 
+    let configuration = config::load_configuration_from_environment_variables()
+        .expect("Failed to load configuration.");
+
     let app = Router::new()
         .route("/", get(root))
         .route("/transaction", post(store_transaction))
         .route("/toppings", get(get_toppings).post(add_topping).delete(delete_topping));
 
-    let address = "127.0.0.1:3333";
+    let address = SocketAddr::new(configuration.bind_host, configuration.bind_port);
     let listener = tokio::net::TcpListener::bind(address).await
         .expect(&format!("Failed to bind address {address}"));
 
