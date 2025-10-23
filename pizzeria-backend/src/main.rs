@@ -5,7 +5,7 @@ use std::path::Path;
 use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::Router;
-use axum::routing::{delete, get, post};
+use axum::routing::{get, post};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use serde::Deserialize;
