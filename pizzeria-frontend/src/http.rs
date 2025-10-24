@@ -3,63 +3,43 @@ use std::env::VarError;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
 
-const BIND_HOST_KEY: &str = "PIZZERIA_BACKEND_BIND_HOST";
-const BIND_PORT_KEY: &str = "PIZZERIA_BACKEND_BIND_PORT";
-const BIND_HOST_DEFAULT: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
-const BIND_PORT_DEFAULT: u16 = 3333;
+const BACKEND_HOST_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_HOST";
+const BACKEND_PORT_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_PORT";
+const BACKEND_HOST_DEFAULT: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
+const BACKEND_PORT_DEFAULT: u16 = 3333;
 
 fn backend_socket_addr() -> io::Result<SocketAddrV4> {
-    let host = match env::var(BIND_HOST_KEY) {
+    let host = match env::var(BACKEND_HOST_KEY) {
         Ok(value) => value.parse::<Ipv4Addr>()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput,
-            format!("Ungültige {}: {} ({e})", BIND_HOST_KEY, value)))?,
-        Err(VarError::NotPresent) => BIND_HOST_DEFAULT,
+            format!("Ungültige {}: {} ({e})", BACKEND_HOST_KEY, value)))?,
+        Err(VarError::NotPresent) => BACKEND_HOST_DEFAULT,
         Err(VarError::NotUnicode(_)) => {
             return Err(io::Error::new(io::ErrorKind::InvalidInput,
-            format!("{} enthält keine gültige UTF-8-Zeichen", BIND_HOST_KEY)))
+            format!("{} enthält keine gültige UTF-8-Zeichen", BACKEND_HOST_KEY)))
         }
     };
 
-    let port = match env::var(BIND_PORT_KEY) {
+    let port = match env::var(BACKEND_PORT_KEY) {
         Ok(value) => value.parse::<u16>()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput,
-                                        format!("Ungültige {}: {} ({e})", BIND_PORT_KEY, value)))?,
-        Err(VarError::NotPresent) => BIND_PORT_DEFAULT,
+                                        format!("Ungültige {}: {} ({e})", BACKEND_PORT_KEY, value)))?,
+        Err(VarError::NotPresent) => BACKEND_PORT_DEFAULT,
         Err(VarError::NotUnicode(_)) => {
             return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                      format!("{} enthält keine gültige UTF-8-Zeichen", BIND_PORT_KEY)));
+                                      format!("{} enthält keine gültige UTF-8-Zeichen", BACKEND_PORT_KEY)));
         }
     };
 
     Ok(SocketAddrV4::new(host, port))
 }
 
-pub fn read_pizza_prebuilds_with_address(address: &str) -> io::Result<String> {
-    let addr_v4: SocketAddrV4 = address.parse()
-        .expect("Should parse address.");
-    let mut stream = TcpStream::connect(addr_v4)?;
-
-    write!(stream, "GET / HTTP/1.1\r
-Host: {address}r
-User-Agent: curl/8.5.0\r
-Accept: */*\r
-\r
-")?;
-    stream.flush()?;
-
-    let body = parse_http_response_body(stream)?;
-    Ok(body)
-}
-// todo: überprüfen und für weitere funktionen implementieren
 pub fn read_pizza_prebuilds() -> io::Result<String> {
-
     let addr = backend_socket_addr()?;
-    let host_port = addr.to_string();
-
     let mut stream = TcpStream::connect(addr)?;
 
     write!(stream, "GET / HTTP/1.1\r
-Host: {host_port}r
+Host: {addr}\r
 User-Agent: curl/8.5.0\r
 Accept: */*\r
 \r
@@ -71,10 +51,11 @@ Accept: */*\r
 }
 
 pub fn read_toppings() -> io::Result<String> {
-    let mut stream = TcpStream::connect("127.0.0.1:3333")?;
+    let addr = backend_socket_addr()?;
+    let mut stream = TcpStream::connect(addr)?;
 
-    stream.write_all(b"GET /toppings HTTP/1.1\r
-Host: 127.0.0.1:3333\r
+    write!(stream, "GET / HTTP/1.1\r
+Host: {addr}\r
 User-Agent: curl/8.5.0\r
 Accept: */*\r
 \r
@@ -86,11 +67,12 @@ Accept: */*\r
 }
 
 pub fn send_transaction_record(transaction_record: String) -> io::Result<()> {
-    let mut stream = TcpStream::connect("127.0.0.1:3333")?;
+    let addr = backend_socket_addr()?;
+    let mut stream = TcpStream::connect(addr)?;
     let transaction_record_length = transaction_record.len();
 
     stream.write_all(format!("POST /transaction HTTP/1.1\r
-Host: 127.0.0.1:3333\r
+Host: {addr}\r
 content-type: text/plain; charset=utf-8\r
 content-length: {transaction_record_length}\r
 \r
