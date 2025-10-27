@@ -99,19 +99,35 @@ async fn get_toppings() -> (StatusCode, String) {
 }
 
 async fn add_topping(body: String) -> StatusCode {
+    //todo: Test if price is shown on Table.
+    eprintln!("add_topping: raw body = {:?}", body);
+
     let line = body.lines().next().unwrap_or("").trim();
-    let name = line.split('#').next().unwrap_or("").trim();
+
+    let Some((name_raw, price_raw)) = line.split_once('#') else {
+        eprintln!("add_topping: invalid format (expected 'Name#Price'), got {:?}", line);
+        return StatusCode::BAD_REQUEST;
+    };
+
+    let name = name_raw.trim();
 
     if name.is_empty() {
         eprintln!("add_topping: empty name in body: {:?}", body);
         return StatusCode::BAD_REQUEST;
     }
 
-    let mut to_write = String::with_capacity(name.len() + 1);
-    to_write.push_str(name);
-    to_write.push('\n');
+    let price: u32 = match price_raw.trim().parse() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("add_topping: invalid price {:?}: {}", price_raw, e);
+            return StatusCode::BAD_REQUEST;
+        }
+    };
 
-    println!("Received request to ADD Topping: '{}'.", name);
+    let to_write = format!("{name}#{price}\n");
+    eprintln!("add_topping: writing {:?}", to_write);
+
+    println!("Received request to ADD Topping: '{}' - '{}.00$'.", name, price);
 
     match OpenOptions::new().create(true).append(true).open("toppings_text").await {
         Ok(mut file) => {
@@ -157,6 +173,17 @@ async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
         }
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//
+//     #[test]
+//     fn should_add_toppings_to_list() {
+//
+//
+//     }
+// }
 
 
 //todo:     - DeleteList funktion an backend?

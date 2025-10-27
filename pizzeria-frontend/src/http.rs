@@ -8,7 +8,7 @@ const BACKEND_PORT_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_PORT";
 const BACKEND_HOST_DEFAULT: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 const BACKEND_PORT_DEFAULT: u16 = 3333;
 
-fn backend_socket_addr() -> io::Result<SocketAddr> {
+pub fn backend_socket_addr() -> io::Result<SocketAddr> {
     let host = match env::var(BACKEND_HOST_KEY) {
         Ok(value) => value.parse::<IpAddr>()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput,
@@ -54,7 +54,7 @@ pub fn read_toppings() -> io::Result<String> {
     let addr = backend_socket_addr()?;
     let mut stream = TcpStream::connect(addr)?;
 
-    write!(stream, "GET / HTTP/1.1\r
+    write!(stream, "GET /toppings HTTP/1.1\r
 Host: {addr}\r
 User-Agent: curl/8.5.0\r
 Accept: */*\r

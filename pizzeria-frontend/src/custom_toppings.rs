@@ -5,7 +5,7 @@ use std::net::TcpStream;
 use crate::clear_screen;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
-use crate::http::read_toppings;
+use crate::http::{backend_socket_addr, read_toppings};
 use crate::ui::{wait_enter, prompt};
 
 // Entfernen nach Nummer oder Name
@@ -153,9 +153,10 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
             }
         };
 
-        let mut line = format!("{}#{}", topping_name, topping_price);
-        if !line.ends_with('\n') { line.push('\n'); }
-
+        eprintln!("topping name: {} and price: {}", topping_name, topping_price);
+        let line = format!("{}#{}", topping_name, topping_price);
+        // if !line.ends_with('\n') { line.push('\n'); }
+        eprintln!("Before Send: {}", line);
         send_post("/toppings", &line)?;
 
         writeln!(stdout, "\nErfolgreich hinzugefügt: \x1b[1;32m{} {}\x1b[0m", topping_name, topping_price)?;
@@ -172,18 +173,21 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
 }
 
 fn send_post(path: &str, body: &str) -> io::Result<()> {
-    let mut stream = TcpStream::connect("127.0.0.1:3333")?;
+    let addr = backend_socket_addr()?;
+    let mut stream =  TcpStream::connect(addr)?;
+    let body_bytes = body.as_bytes();
     let body_length = body.as_bytes().len();
 
-    let req = format!("POST {path} HTTP/1.1\r
-Host: 127.0.0.1:3333\r
+    let head = format!("POST {path} HTTP/1.1\r
+Host: {addr}\r
 Content-Type: text/plain; charset=utf-8\r
 Content-Length: {body_length}\r
 Connection: close\r
 \r
-{body}");
-
-    stream.write_all(req.as_bytes())?;
+");
+    eprintln!("This is the Body: {body}");
+    stream.write_all(head.as_bytes())?;
+    stream.write_all(body_bytes)?;
     stream.flush()?;
 
     let mut resp = String::new();
