@@ -1,19 +1,19 @@
 use std::{env, io};
 use std::env::VarError;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
 
 const BACKEND_HOST_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_HOST";
 const BACKEND_PORT_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_PORT";
 const BACKEND_HOST_DEFAULT: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 const BACKEND_PORT_DEFAULT: u16 = 3333;
 
-fn backend_socket_addr() -> io::Result<SocketAddrV4> {
+fn backend_socket_addr() -> io::Result<SocketAddr> {
     let host = match env::var(BACKEND_HOST_KEY) {
-        Ok(value) => value.parse::<Ipv4Addr>()
+        Ok(value) => value.parse::<IpAddr>()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput,
             format!("Ungültige {}: {} ({e})", BACKEND_HOST_KEY, value)))?,
-        Err(VarError::NotPresent) => BACKEND_HOST_DEFAULT,
+        Err(VarError::NotPresent) => IpAddr::V4(BACKEND_HOST_DEFAULT),
         Err(VarError::NotUnicode(_)) => {
             return Err(io::Error::new(io::ErrorKind::InvalidInput,
             format!("{} enthält keine gültige UTF-8-Zeichen", BACKEND_HOST_KEY)))
@@ -31,7 +31,7 @@ fn backend_socket_addr() -> io::Result<SocketAddrV4> {
         }
     };
 
-    Ok(SocketAddrV4::new(host, port))
+    Ok(SocketAddr::new(host, port))
 }
 
 pub fn read_pizza_prebuilds() -> io::Result<String> {
