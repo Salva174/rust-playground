@@ -1,6 +1,6 @@
 mod config;
+mod custom_error;
 
-use std::net::SocketAddr;
 use tokio::fs;
 use std::path::Path;
 use axum::extract::Query;
@@ -20,8 +20,14 @@ async fn main() {
         .route("/transaction", post(store_transaction))
         .route("/toppings", get(get_toppings).post(add_topping).delete(delete_topping));
 
-    let address = config::get_socket_address()
-        .expect("Failed to get socked address");
+    let address = match config::get_socket_address() {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("Failed to get socket address: {e}");
+            return;
+        }
+    };
+
 
     let listener = tokio::net::TcpListener::bind(address).await
         .expect(&format!("Failed to bind address {address}"));

@@ -1,7 +1,7 @@
 use std::{env, io};
 use std::env::VarError;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 
 const BACKEND_HOST_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_HOST";
 const BACKEND_PORT_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_PORT";

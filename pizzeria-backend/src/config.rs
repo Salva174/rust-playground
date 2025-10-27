@@ -1,7 +1,9 @@
 use std::env;
 use std::env::VarError;
+use std::error::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
+use crate::custom_error::ConfigError;
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
@@ -14,38 +16,36 @@ const BIND_HOST_DEFAULT: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 const BIND_PORT_KEY: &str = "PIZZERIA_BACKEND_BIND_PORT";
 const BIND_PORT_DEFAULT: u16 = 3333;
 
-pub fn load_configuration_from_environment_variables() -> Result<Config, Box<dyn std::error::Error>> {
+pub fn load_configuration_from_environment_variables() -> Result<Config, ConfigError> {
     Ok(Config {
         bind_host: extract_environment_variable(BIND_HOST_KEY, BIND_HOST_DEFAULT)?,
         bind_port: extract_environment_variable(BIND_PORT_KEY, BIND_PORT_DEFAULT)?
     })
 }
 
-fn extract_environment_variable<T: FromStr>(key: &str, default: T) -> Result<T, Box<dyn std::error::Error>>
-where <T as FromStr>::Err: std::error::Error + 'static {
-    let value = env::var(key);
+fn extract_environment_variable<T>(key: &str, default: T) -> Result<T, ConfigError>
+where T: FromStr,
+      T::Err: Error + Send + Sync + 'static {
 
-    let value =  match value {
-        Ok(value) => T::from_str(&value)?, //todo: add error context
+   match env::var(key) {
+        Ok(value) => value.parse::<T>().map_err(|error| ConfigError::Parse {
+            key: key.to_string(),
+            value,
+            source: Box::new(error),
+        }),
         Err(VarError::NotPresent) => {
-            default
+            Ok(default)
         }
         Err(error @ VarError::NotUnicode(_)) => {
-            return Err(Box::new(error));
+            Err(ConfigError::NotUnicode { key: key.to_string(), source: error })
         }
-    };
-    Ok(value)
+    }
 }
 
-pub fn get_socket_address() -> Result<SocketAddr, Box<dyn std::error::Error>> {
+pub fn get_socket_address() -> Result<SocketAddr, ConfigError> {
     let configuration = load_configuration_from_environment_variables()?;
     Ok(SocketAddr::new(configuration.bind_host, configuration.bind_port))
 }
-
-pub fn addr_string(cfg: &Config) -> String {
-    format!("{}:{}", cfg.bind_host, cfg.bind_port)
-}
-
 
 #[cfg(test)]
 mod tests {
