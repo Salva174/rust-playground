@@ -7,8 +7,8 @@ use crate::custom_error::ConfigError;
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
-    pub bind_host: IpAddr,
-    pub bind_port: u16,
+    bind_host: IpAddr,
+    bind_port: u16,
 }
 
 const BIND_HOST_KEY: &str = "PIZZERIA_BACKEND_BIND_HOST";
