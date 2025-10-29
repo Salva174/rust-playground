@@ -197,7 +197,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
 
                     match confirm(stdin, stdout, "\n\x1b[34mListe wirklich löschen?\x1b[0m (\x1b[32mY\x1b[0m/\x1b[31mN\x1b[0m): ") {
                         Ok(true) => {
-                            if let Err(e) = send_clear_toppings("toppings/clear") {
+                            if let Err(e) = send_clear_toppings("/toppings/clear") {
                                 writeln!(stdout, "Fehler: {e}").ok();
                             } else {
                                 writeln!(stdout, "\x1b[1;35mDatei geleert. \x1b[0m").ok();
