@@ -100,7 +100,6 @@ async fn get_toppings() -> (StatusCode, String) {
 
 async fn add_topping(body: String) -> StatusCode {
     //todo: Test if price is shown on Table.
-    eprintln!("add_topping: raw body = {:?}", body);
 
     let line = body.lines().next().unwrap_or("").trim();
 
@@ -125,9 +124,8 @@ async fn add_topping(body: String) -> StatusCode {
     };
 
     let to_write = format!("{name}#{price}\n");
-    eprintln!("add_topping: writing {:?}", to_write);
 
-    println!("Received request to ADD Topping: '{}' - '{}.00$'.", name, price);
+    println!("Received request to ADD Topping: '{}'.", name);
 
     match OpenOptions::new().create(true).append(true).open("toppings_text").await {
         Ok(mut file) => {
