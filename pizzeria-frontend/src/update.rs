@@ -238,7 +238,7 @@ pub fn select_row(table: &mut Table, selected_row: usize) {
     }
 }
 
-fn clear_toppings_file(path: &str) -> io::Result<()> {
+pub fn clear_toppings_file(path: &str) -> io::Result<()> {
     File::create(path).map(|_| ())
 }
 
