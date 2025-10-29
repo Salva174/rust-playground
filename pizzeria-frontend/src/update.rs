@@ -7,7 +7,7 @@ use crate::table::{Table, TableCell, TableRow};
 use crate::table::Align::Right;
 use crate::table_menu::TableMenu;
 use crate::types::{Pizza, Topping};
-use crate::custom_toppings::{add_toppings, list_toppings_from_backend, remove_topping};
+use crate::custom_toppings::{add_toppings, list_toppings_from_backend, remove_topping, send_clear_toppings};
 use crate::http::send_transaction_record;
 use crate::input::{read_input, InputEvent};
 use crate::render::render_menu;
@@ -197,7 +197,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
 
                     match confirm(stdin, stdout, "\n\x1b[34mListe wirklich löschen?\x1b[0m (\x1b[32mY\x1b[0m/\x1b[31mN\x1b[0m): ") {
                         Ok(true) => {
-                            if let Err(e) = clear_toppings_file(file_path) {
+                            if let Err(e) = send_clear_toppings() {
                                 writeln!(stdout, "Fehler: {e}").ok();
                             } else {
                                 writeln!(stdout, "\x1b[1;35mDatei geleert. \x1b[0m").ok();
@@ -238,7 +238,7 @@ pub fn select_row(table: &mut Table, selected_row: usize) {
     }
 }
 
-fn clear_toppings_file(path: &str) -> io::Result<()> {
+pub fn clear_toppings_file(path: &str) -> io::Result<()> {
     File::create(path).map(|_| ())
 }
 

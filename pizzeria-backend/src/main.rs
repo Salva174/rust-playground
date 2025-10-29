@@ -6,11 +6,10 @@ use std::path::Path;
 use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::Router;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use serde::Deserialize;
-
 
 #[tokio::main]
 async fn main() {
@@ -18,7 +17,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(root))
         .route("/transaction", post(store_transaction))
-        .route("/toppings", get(get_toppings).post(add_topping).delete(delete_topping));
+        .route("/toppings", get(get_toppings).post(add_topping).delete(delete_topping))
+        .route("/toppings/clear", delete(clear_topping_list));
 
     let address = match config::get_socket_address() {
         Ok(a) => a,
@@ -54,6 +54,7 @@ async fn root() -> (StatusCode, String) {
 }
 
 const LOG_PATH: &str = "transactions.log";
+const TOPPINGS_FILE: &str = "toppings_text";
 
 async fn store_transaction(mut transaction_record: String) -> StatusCode {
     eprintln!("Received request to store transaction record '{transaction_record}'.");
@@ -85,7 +86,7 @@ async fn store_transaction(mut transaction_record: String) -> StatusCode {
 
 async fn get_toppings() -> (StatusCode, String) {
     eprintln!("Received request for Topping List.");
-    let path = Path::new("toppings_text");
+    let path = Path::new(TOPPINGS_FILE);
 
     match fs::read_to_string(path).await {
         Ok(toppings) => {
@@ -99,7 +100,6 @@ async fn get_toppings() -> (StatusCode, String) {
 }
 
 async fn add_topping(body: String) -> StatusCode {
-    //todo: Test if price is shown on Table.
 
     let line = body.lines().next().unwrap_or("").trim();
 
@@ -127,7 +127,7 @@ async fn add_topping(body: String) -> StatusCode {
 
     println!("Received request to ADD Topping: '{}'.", name);
 
-    match OpenOptions::new().create(true).append(true).open("toppings_text").await {
+    match OpenOptions::new().create(true).append(true).open(TOPPINGS_FILE).await {
         Ok(mut file) => {
             if let Err(e) = file.write_all(to_write.as_bytes()).await {
                 eprintln!("write error: {e}");
@@ -149,7 +149,7 @@ struct DeleteParameters { name : String }
 async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
     eprintln!("Received request to DELETE Topping '{}'.", p.name);
 
-    match fs::read_to_string("toppings_text").await {
+    match fs::read_to_string(TOPPINGS_FILE).await {
         Ok(content) => {
             let mut kept = String::new();
             for line in content.lines() {
@@ -159,7 +159,7 @@ async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
                     kept.push('\n');
                 }
             }
-            if let Err(e) = fs::write("toppings_text", kept).await {
+            if let Err(e) = fs::write(TOPPINGS_FILE, kept).await {
                 eprintln!("write error: {e}");
                 return StatusCode::INTERNAL_SERVER_ERROR;
             }
@@ -172,16 +172,27 @@ async fn delete_topping(Query(p): Query<DeleteParameters>) -> StatusCode {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn should_add_toppings_to_list() {
-//
-//
-//     }
-// }
 
+async fn clear_topping_list() -> StatusCode {
+    eprintln!("Received request to CLEAR Topping List.");
 
-//todo:     - DeleteList funktion an backend?
+    match clear_toppings_file_async(TOPPINGS_FILE).await {
+        Ok(()) => StatusCode::NO_CONTENT,
+        Err(e) => {
+            eprintln!("clear error: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+
+}
+
+async fn clear_toppings_file_async(path: &str) -> std::io::Result<()> {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .await?;
+    file.flush().await?;
+    Ok(())
+}
