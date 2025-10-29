@@ -118,11 +118,11 @@ Connection: close\r\n
     }
 }
 
-pub fn send_clear_toppings() -> io::Result<()> {
+pub fn send_clear_toppings(path: &str) -> io::Result<()> {
     let addr = backend_socket_addr()?;
     let mut stream =  TcpStream::connect(addr)?;
 
-    write!(stream, "DELETE /toppigns/clear HTTP/1.1\r
+    write!(stream, "DELETE {path} HTTP/1.1\r
 Host: {addr}\r
 Connection close\r
 \r"
