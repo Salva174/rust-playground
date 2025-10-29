@@ -37,7 +37,7 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
 
     // Auswahl interpretieren
     let name_to_delete: String = if let Ok(idx1) = choice.parse::<usize>() {
-        // Nummernbasiert (1..=len)
+        // Nummernbasiert
         if !(1..=lines.len()).contains(&idx1) {
             writeln!(stdout, "Ungültige Nummer.")?;
             stdout.flush()?;
@@ -62,7 +62,6 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
         }
     };
 
-        // let name = entry.split('#').next().unwrap_or(&entry).to_string();
         send_delete_topping(&name_to_delete)?;
         clear_screen(stdout).expect("Should clear screen.");
     
@@ -74,85 +73,6 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
         stdout.flush()?;
 
     Ok(())
-}
-
-fn send_delete_topping(name: &str) -> io::Result<()> {
-    use std::io::Write;
-    use std::net::TcpStream;
-
-    let name_enc = urlencoding::encode(name);
-    let addr = backend_socket_addr()?;
-    let mut stream =  TcpStream::connect(addr)?;
-
-    let req = format!("DELETE /toppings?name={name_enc} HTTP/1.1\r\n
-Host: {addr}\r\n
-Connection: close\r\n
-\r\n"
-);
-
-    stream.write_all(req.as_bytes())?;
-    stream.flush()?;
-
-    let mut reader = BufReader::new(stream);
-    let mut status_line = String::new();
-    reader.read_line(&mut status_line)?;
-
-    let code = status_line
-        .split_whitespace()
-        .nth(1)
-        .and_then(|s| s.parse::<u16>().ok())
-        .unwrap_or(0);
-
-    let mut line = String::new();
-    loop {
-        line.clear();
-        let n = reader.read_line(&mut line)?;
-        if n == 0 { break; }
-        if line == "\r\n" || line.trim().is_empty() { break; }
-    }
-
-    if (200..300).contains(&code) {
-        Ok(())
-    } else {
-        Err(io::Error::new(io::ErrorKind::Other, format!("HTTP {}", code)))
-    }
-}
-
-pub fn send_clear_toppings(path: &str) -> io::Result<()> {
-    let addr = backend_socket_addr()?;
-    let mut stream =  TcpStream::connect(addr)?;
-
-    let req = format!("DELETE {path} HTTP/1.1\r\n
-Host: {addr}\r\n
-Connection: close\r\n
-\r\n"
-);
-    stream.write_all(req.as_bytes())?;
-    stream.flush()?;
-
-    let mut reader = BufReader::new(stream);
-    let mut status_line = String::new();
-    reader.read_line(&mut status_line)?;
-
-    let code = status_line
-        .split_whitespace()
-        .nth(1)
-        .and_then(|s| s.parse::<u16>().ok())
-        .unwrap_or(0);
-
-    let mut line = String::new();
-    loop {
-        line.clear();
-        let n = reader.read_line(&mut line)?;
-        if n == 0 { break; }
-        if line == "\r\n" || line.trim().is_empty() { break; }
-    }
-
-    if (200..300).contains(&code) {
-        Ok(())
-    } else {
-        Err(io::Error::new(io::ErrorKind::Other, format!("HTTP {}", code)))
-    }
 }
 
 pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dyn Error>> {
@@ -204,7 +124,6 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
             break;
         }
     }
-
     Ok(())
 }
 
@@ -228,12 +147,53 @@ Connection: close\r
 
     let mut resp = String::new();
     stream.read_to_string(&mut resp).ok();
-    let code = resp.split_whitespace().nth(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
-    if !(200..300).contains(&code) {
-        return Err(io::Error::new(io::ErrorKind::Other, format!("HTTP {}", code)));
-    }
+    let code = resp.split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse::<u16>().ok())
+        .unwrap_or(0);
 
-    Ok(())
+    ensure_success_code(code)
+}
+
+fn send_delete_topping(name: &str) -> io::Result<()> {
+    use std::io::Write;
+    use std::net::TcpStream;
+
+    let name_enc = urlencoding::encode(name);
+    let addr = backend_socket_addr()?;
+    let mut stream =  TcpStream::connect(addr)?;
+
+    let req = format!("DELETE /toppings?name={name_enc} HTTP/1.1\r\n
+Host: {addr}\r\n
+Connection: close\r\n
+\r\n"
+    );
+
+    stream.write_all(req.as_bytes())?;
+    stream.flush()?;
+
+    let mut reader = BufReader::new(stream);
+    let code = http_read_status(&mut reader)?;
+
+    ensure_success_code(code)
+}
+
+pub fn send_clear_toppings(path: &str) -> io::Result<()> {
+    let addr = backend_socket_addr()?;
+    let mut stream =  TcpStream::connect(addr)?;
+
+    let req = format!("DELETE {path} HTTP/1.1\r\n
+Host: {addr}\r\n
+Connection: close\r\n
+\r\n"
+    );
+    stream.write_all(req.as_bytes())?;
+    stream.flush()?;
+
+    let mut reader = BufReader::new(stream);
+    let code = http_read_status(&mut reader)?;
+
+    ensure_success_code(code)
 }
 
 fn list_toppings_from_str(stdout: &mut Stdout, content: &str) -> io::Result<()> {
@@ -274,4 +234,33 @@ fn list_toppings_from_str(stdout: &mut Stdout, content: &str) -> io::Result<()> 
 pub fn list_toppings_from_backend(stdout: &mut Stdout) -> io::Result<()> {
     let body = read_toppings()?;
     list_toppings_from_str(stdout, &body)
+}
+
+fn http_read_status<R: BufRead>(reader: &mut R) -> io::Result<u16> {
+    let mut status_line = String::new();
+    reader.read_line(&mut status_line)?;
+
+    let code = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse::<u16>().ok())
+        .unwrap_or(0);
+
+    let mut line = String::new();
+    loop {
+        line.clear();
+        let n = reader.read_line(&mut line)?;
+        if n == 0 { break; }
+        if line == "\r\n" || line.trim().is_empty() { break; }
+    }
+
+    Ok(code)
+}
+
+fn ensure_success_code(code:u16) -> io::Result<()> {
+    if (200..300).contains(&code) {
+        Ok(())
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, format!("HTTP {code}")))
+    }
 }

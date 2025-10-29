@@ -1,6 +1,4 @@
 use std::error::Error;
-use std::fs::File;
-use std::io;
 use std::io::{Stdin, Stdout, Write};
 use crate::clear_screen;
 use crate::table::{Table, TableCell, TableRow};
@@ -236,10 +234,6 @@ pub fn select_row(table: &mut Table, selected_row: usize) {
             cell.text_mut().push(' ');
         }
     }
-}
-
-pub fn clear_toppings_file(path: &str) -> io::Result<()> {
-    File::create(path).map(|_| ())
 }
 
 pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_toppings: &[Topping], base_price: u32, ) -> Result<Option<String>, Box<dyn Error>> {

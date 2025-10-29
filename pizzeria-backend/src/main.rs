@@ -124,8 +124,7 @@ async fn add_topping(body: String) -> StatusCode {
     };
 
     let to_write = format!("{name}#{price}\n");
-
-    println!("Received request to ADD Topping: '{}'.", name);
+    println!("Received request to ADD Topping '{}'.", name);
 
     match OpenOptions::new().create(true).append(true).open(TOPPINGS_FILE).await {
         Ok(mut file) => {
