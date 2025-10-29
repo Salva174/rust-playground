@@ -81,13 +81,13 @@ fn send_delete_topping(name: &str) -> io::Result<()> {
     use std::net::TcpStream;
 
     let name_enc = urlencoding::encode(name);
-    let mut stream = TcpStream::connect("127.0.0.1:3333")?;
+    let addr = backend_socket_addr()?;
+    let mut stream =  TcpStream::connect(addr)?;
 
-    let req = format!("DELETE /toppings?name={name} HTTP/1.1\r\n
-Host: 127.0.0.1:3333\r\n
+    let req = format!("DELETE /toppings?name={name_enc} HTTP/1.1\r\n
+Host: {addr}\r\n
 Connection: close\r\n
-\r\n",
-name = name_enc
+\r\n"
 );
 
     stream.write_all(req.as_bytes())?;
@@ -153,10 +153,9 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
             }
         };
 
-        eprintln!("topping name: {} and price: {}", topping_name, topping_price);
         let line = format!("{}#{}", topping_name, topping_price);
         // if !line.ends_with('\n') { line.push('\n'); }
-        eprintln!("Before Send: {}", line);
+
         send_post("/toppings", &line)?;
 
         writeln!(stdout, "\nErfolgreich hinzugefügt: \x1b[1;32m{} {}\x1b[0m", topping_name, topping_price)?;
@@ -185,7 +184,7 @@ Content-Length: {body_length}\r
 Connection: close\r
 \r
 ");
-    eprintln!("This is the Body: {body}");
+
     stream.write_all(head.as_bytes())?;
     stream.write_all(body_bytes)?;
     stream.flush()?;
