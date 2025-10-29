@@ -16,5 +16,6 @@ pub mod types;
 
 pub fn clear_screen(stdout: &mut Stdout) -> Result<(), Box<dyn std::error::Error>> {
     write!(stdout, "\x1B[2J\x1B[1;1H")?;
+    stdout.flush()?;
     Ok(())
 }

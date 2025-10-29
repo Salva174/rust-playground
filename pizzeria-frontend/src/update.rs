@@ -182,6 +182,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
                         writeln!(stdout, "Fehler {e}").ok();
                     }
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
+                    clear_screen(stdout).ok();
                 }
                 2 => {
                     let _ = clear_screen(stdout);
@@ -191,7 +192,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
                 }
                 3 => {
-                    // let _ = clear_screen(stdout);
+                    let _ = clear_screen(stdout);
 
                     match confirm(stdin, stdout, "\n\x1b[34mListe wirklich löschen?\x1b[0m (\x1b[32mY\x1b[0m/\x1b[31mN\x1b[0m): ") {
                         Ok(true) => {
@@ -215,6 +216,8 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
         }
         InputEvent::Back => {
             state.current_menu = MenuIndex::MainMenu;
+            clear_screen(stdout).ok();
+            stdout.flush().ok();
         }
         _ => {}
     }
