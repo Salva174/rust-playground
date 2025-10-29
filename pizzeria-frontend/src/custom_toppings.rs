@@ -122,14 +122,37 @@ pub fn send_clear_toppings(path: &str) -> io::Result<()> {
     let addr = backend_socket_addr()?;
     let mut stream =  TcpStream::connect(addr)?;
 
-    write!(stream, "DELETE {path} HTTP/1.1\r
-Host: {addr}\r
-Connection close\r
-\r"
-)?;
+    let req = format!("DELETE {path} HTTP/1.1\r\n
+Host: {addr}\r\n
+Connection: close\r\n
+\r\n"
+);
+    stream.write_all(req.as_bytes())?;
+    stream.flush()?;
 
-    Ok(())
+    let mut reader = BufReader::new(stream);
+    let mut status_line = String::new();
+    reader.read_line(&mut status_line)?;
 
+    let code = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse::<u16>().ok())
+        .unwrap_or(0);
+
+    let mut line = String::new();
+    loop {
+        line.clear();
+        let n = reader.read_line(&mut line)?;
+        if n == 0 { break; }
+        if line == "\r\n" || line.trim().is_empty() { break; }
+    }
+
+    if (200..300).contains(&code) {
+        Ok(())
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, format!("HTTP {}", code)))
+    }
 }
 
 pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dyn Error>> {

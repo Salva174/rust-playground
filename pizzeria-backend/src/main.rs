@@ -177,7 +177,7 @@ async fn clear_topping_list() -> StatusCode {
     eprintln!("Received request to CLEAR Topping List.");
 
     match clear_toppings_file_async(TOPPINGS_FILE).await {
-        Ok(()) => StatusCode::NO_CONTENT,
+        Ok(()) => { eprintln!("Toppings file cleared."); StatusCode::NO_CONTENT }
         Err(e) => {
             eprintln!("clear error: {e}");
             StatusCode::INTERNAL_SERVER_ERROR
