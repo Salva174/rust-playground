@@ -13,6 +13,7 @@ pub mod toppings;
 pub mod table;
 pub mod table_menu;
 pub mod types;
+mod error;
 
 pub fn clear_screen(stdout: &mut Stdout) -> Result<(), Box<dyn std::error::Error>> {
     write!(stdout, "\x1B[2J\x1B[1;1H")?;

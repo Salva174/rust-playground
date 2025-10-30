@@ -3,6 +3,7 @@ use std::io;
 use std::io::{BufRead, BufReader, Read, Stdin, Stdout, Write};
 use std::net::TcpStream;
 use crate::clear_screen;
+use crate::error::FrontendError;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
 use crate::http::{backend_socket_addr, read_toppings};
@@ -128,7 +129,8 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
 }
 
 fn send_post(path: &str, body: &str) -> io::Result<()> {
-    let addr = backend_socket_addr()?;
+    let addr = backend_socket_addr()
+        .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
     let body_bytes = body.as_bytes();
     let body_length = body.as_bytes().len();
@@ -160,7 +162,8 @@ fn send_delete_topping(name: &str) -> io::Result<()> {
     use std::net::TcpStream;
 
     let name_enc = urlencoding::encode(name);
-    let addr = backend_socket_addr()?;
+    let addr = backend_socket_addr()
+        .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
 
     let req = format!("DELETE /toppings?name={name_enc} HTTP/1.1\r\n
@@ -179,7 +182,8 @@ Connection: close\r\n
 }
 
 pub fn send_clear_toppings(path: &str) -> io::Result<()> {
-    let addr = backend_socket_addr()?;
+    let addr = backend_socket_addr()
+        .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
 
     let req = format!("DELETE {path} HTTP/1.1\r\n

@@ -31,7 +31,7 @@ impl Error for ConfigError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ConfigError::NotUnicode { source, .. } => Some(source),
-            ConfigError::Parse { source, ..} => Some(source.as_ref()),
+            ConfigError::Parse { source, .. } => Some(source.as_ref()),
         }
     }
 }

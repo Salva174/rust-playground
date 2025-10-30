@@ -2,32 +2,43 @@ use std::{env, io};
 use std::env::VarError;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
+use crate::error::FrontendError;
 
-const BACKEND_HOST_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_HOST";
-const BACKEND_PORT_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_PORT";
+pub const BACKEND_HOST_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_HOST";
+pub const BACKEND_PORT_KEY: &str = "PIZZERIA_FRONTEND_BACKEND_PORT";
 const BACKEND_HOST_DEFAULT: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 const BACKEND_PORT_DEFAULT: u16 = 3333;
 
-pub fn backend_socket_addr() -> io::Result<SocketAddr> {
+pub fn backend_socket_addr() -> Result<SocketAddr, FrontendError> {
     let host = match env::var(BACKEND_HOST_KEY) {
         Ok(value) => value.parse::<IpAddr>()
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput,
-            format!("Ungültige {}: {} ({e})", BACKEND_HOST_KEY, value)))?,
+            .map_err(|error| FrontendError::InvalidHost {
+                key: BACKEND_HOST_KEY,
+                value,
+                source: error,
+            })?,
         Err(VarError::NotPresent) => IpAddr::V4(BACKEND_HOST_DEFAULT),
-        Err(VarError::NotUnicode(_)) => {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-            format!("{} enthält keine gültige UTF-8-Zeichen", BACKEND_HOST_KEY)))
+        Err(error @ VarError::NotUnicode(_)) => {
+            return Err(FrontendError::NotUnicode {
+                key: BACKEND_HOST_KEY,
+                source: error,
+            })
         }
     };
 
     let port = match env::var(BACKEND_PORT_KEY) {
         Ok(value) => value.parse::<u16>()
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput,
-                                        format!("Ungültige {}: {} ({e})", BACKEND_PORT_KEY, value)))?,
+            .map_err(|error| FrontendError::InvalidPort {
+                key: BACKEND_PORT_KEY,
+                value,
+                source: error,
+            })?,
         Err(VarError::NotPresent) => BACKEND_PORT_DEFAULT,
-        Err(VarError::NotUnicode(_)) => {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                      format!("{} enthält keine gültige UTF-8-Zeichen", BACKEND_PORT_KEY)));
+        Err(error @ VarError::NotUnicode(_)) => {
+            return Err(FrontendError::NotUnicode {
+                key: BACKEND_PORT_KEY,
+                source: error,
+            })
         }
     };
 
@@ -35,7 +46,8 @@ pub fn backend_socket_addr() -> io::Result<SocketAddr> {
 }
 
 pub fn read_pizza_prebuilds() -> io::Result<String> {
-    let addr = backend_socket_addr()?;
+    let addr = backend_socket_addr()
+        .map_err(FrontendError::into_io)?;
     let mut stream = TcpStream::connect(addr)?;
 
     write!(stream, "GET / HTTP/1.1\r
@@ -46,12 +58,14 @@ Accept: */*\r
 ")?;
     stream.flush()?;
 
-    let body = parse_http_response_body(stream)?;
+    let body = parse_http_response_body(stream)
+        .map_err(FrontendError::into_io)?;
     Ok(body)
 }
 
 pub fn read_toppings() -> io::Result<String> {
-    let addr = backend_socket_addr()?;
+    let addr = backend_socket_addr()
+        .map_err(FrontendError::into_io)?;
     let mut stream = TcpStream::connect(addr)?;
 
     write!(stream, "GET /toppings HTTP/1.1\r
@@ -62,12 +76,14 @@ Accept: */*\r
 ")?;
     stream.flush()?;
 
-    let body = parse_http_response_body(stream)?;
+    let body = parse_http_response_body(stream)
+        .map_err(FrontendError::into_io)?;
     Ok(body)
 }
 
 pub fn send_transaction_record(transaction_record: String) -> io::Result<()> {
-    let addr = backend_socket_addr()?;
+    let addr = backend_socket_addr()
+        .map_err(FrontendError::into_io)?;
     let mut stream = TcpStream::connect(addr)?;
     let transaction_record_length = transaction_record.len();
 
@@ -89,27 +105,28 @@ content-length: {transaction_record_length}\r
         .unwrap_or(0);
 
     if !(200..300).contains(&code) {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("backend returned HTTP {}", code),
-        ));
+        return Err(
+            FrontendError::HttpStatus { code }.into_io(),
+        );
     }
 
-    let _ = parse_http_response_body(reader)?; //receive empty body to avoid connection closing before server responded
+    let _ = parse_http_response_body(reader)
+        .map_err(FrontendError::into_io)?; //receive empty body to avoid connection closing before server responded
 
     //todo: validate response status code is successful
 
     Ok(())
 }
 
-fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
+fn parse_http_response_body(stream: impl Read) -> Result<String, FrontendError> {
     let mut reader = BufReader::new(stream);
     let mut content_length: Option<usize> = None;
     let mut buffer = String::new();
 
     loop {
         buffer.clear();
-        let read_bytes = reader.read_line(&mut buffer)?;
+        let read_bytes = reader.read_line(&mut buffer)
+            .map_err(|_| FrontendError::UnexpectedEof)?;
         if read_bytes == 0 {
             break;      //Verbindung zu
         }
@@ -123,7 +140,10 @@ fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
         if let Some((name, value)) = line.split_once(':') {
             if name.eq_ignore_ascii_case("content-length") {
                 let len = value.trim().parse::<usize>()
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Invalid Content-Length: {e}")))?;
+                    .map_err(|error| FrontendError::InvalidContentLength {
+                        value: value.trim().to_string(),
+                        source: error,
+                    })?;
                 content_length = Some(len);
             }
         }
@@ -137,9 +157,10 @@ fn parse_http_response_body(stream: impl Read) -> io::Result<String> {
     }
 
     let mut body_buffer = vec![0u8; n];
-    reader.read_exact(&mut body_buffer)?;
+    reader.read_exact(&mut body_buffer)
+        .map_err(|_| FrontendError::UnexpectedEof)?;
     let body = String::from_utf8(body_buffer)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        .map_err(|error| FrontendError::BodyUtf8 {source: error})?;
     // println!("{body:?}");
     Ok(body)
 }
