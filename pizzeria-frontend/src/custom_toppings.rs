@@ -6,7 +6,7 @@ use crate::clear_screen;
 use crate::error::FrontendError;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
-use crate::http::{backend_socket_addr, read_toppings};
+use crate::http::{parse_arguments, read_toppings};
 use crate::http::request::RequestBuilder;
 use crate::ui::{wait_enter, prompt};
 
@@ -130,7 +130,7 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
 }
 
 fn send_post(path: &str, body: &str) -> io::Result<()> {
-    let addr = backend_socket_addr()
+    let addr = parse_arguments()
         .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
     let body_length = body.as_bytes().len();
@@ -161,7 +161,7 @@ fn send_delete_topping(name: &str) -> io::Result<()> {
     use std::net::TcpStream;
 
     let name_enc = urlencoding::encode(name);
-    let addr = backend_socket_addr()
+    let addr = parse_arguments()
         .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
 
@@ -180,7 +180,7 @@ fn send_delete_topping(name: &str) -> io::Result<()> {
 }
 
 pub fn send_clear_toppings(path: &str) -> io::Result<()> {
-    let addr = backend_socket_addr()
+    let addr = parse_arguments()
         .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
 

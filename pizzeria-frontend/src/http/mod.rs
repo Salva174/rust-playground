@@ -1,4 +1,4 @@
-mod address;
+pub mod address;
 pub mod request;
 
 use std::io;
@@ -7,14 +7,14 @@ use std::net::TcpStream;
 use crate::error::FrontendError;
 
 pub use address::{
-    backend_socket_addr,
+    parse_arguments,
     BACKEND_HOST_KEY,
     BACKEND_PORT_KEY
 };
 use crate::http::request::RequestBuilder;
 
 pub fn read_pizza_prebuilds() -> io::Result<String> {
-    let addr = backend_socket_addr()
+    let addr = parse_arguments()
         .map_err(FrontendError::into_io)?;
     let mut stream = TcpStream::connect(addr)?;
 
@@ -31,7 +31,7 @@ pub fn read_pizza_prebuilds() -> io::Result<String> {
 }
 
 pub fn read_toppings() -> io::Result<String> {
-    let addr = backend_socket_addr()
+    let addr = parse_arguments()
         .map_err(FrontendError::into_io)?;
     let mut stream = TcpStream::connect(addr)?;
 
@@ -49,7 +49,7 @@ pub fn read_toppings() -> io::Result<String> {
 }
 
 pub fn send_transaction_record(transaction_record: String) -> io::Result<()> {
-    let addr = backend_socket_addr()
+    let addr = parse_arguments()
         .map_err(FrontendError::into_io)?;
     let mut stream = TcpStream::connect(addr)?;
     let transaction_record_length = transaction_record.len();

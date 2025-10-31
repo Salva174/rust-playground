@@ -19,10 +19,14 @@ pub enum FrontendError {
         value: String,
         source: ParseIntError
     },
+    InvalidSocketAddr {
+        value: String, source: AddrParseError
+    },
     NotUnicode {
         key: &'static str,
         source: VarError,
     },
+    NotUnicodeArg,
     HttpStatus {
         code: u16,
     },
@@ -39,12 +43,16 @@ pub enum FrontendError {
 impl Display for FrontendError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            FrontendError::InvalidHost { key, value, ..} =>
+            FrontendError::InvalidHost { key, value, .. } =>
                 write!(f, "Ungültiger Host in {key}: '{value}'"),
-            FrontendError::InvalidPort { key, value, ..} =>
+            FrontendError::InvalidPort { key, value, .. } =>
                 write!(f, "Ungültiger Port in {key}: '{value}'"),
+            FrontendError::InvalidSocketAddr { value,  .. } =>
+                write!(f, "Ungültige Adresse '{value}'."),
             FrontendError::NotUnicode { key, ..} =>
                 write!(f, "{key} ist nicht gültiges Unicode."),
+            FrontendError::NotUnicodeArg { .. } =>
+                write!(f, "Nicht gültiges Unicode."),
             FrontendError::HttpStatus { code} =>
                 write!(f, "Backend antwortet mit HTTP {code}."),
             FrontendError::InvalidContentLength { value, ..} =>
@@ -62,7 +70,9 @@ impl Error for FrontendError {
         match self {
             FrontendError::InvalidHost { source, .. } => Some(source),
             FrontendError::InvalidPort { source, .. } => Some(source),
+            FrontendError::InvalidSocketAddr { source, .. } => Some(source),
             FrontendError::NotUnicode { source, .. } => Some(source),
+            FrontendError::NotUnicodeArg { ..} => None,
             FrontendError::HttpStatus { .. } => None,
             FrontendError::InvalidContentLength { source , .. } => Some(source),
             FrontendError::BodyUtf8 { source, .. } => Some(source),
@@ -76,7 +86,9 @@ impl FrontendError {
         let kind = match self {
             FrontendError::InvalidHost { .. } => InvalidInput,
             FrontendError::InvalidPort { .. } => InvalidInput,
+            FrontendError::InvalidSocketAddr { .. } => InvalidInput,
             FrontendError::NotUnicode { .. } => InvalidInput,
+            FrontendError::NotUnicodeArg { .. } => InvalidInput,
             FrontendError::HttpStatus { .. } => Other,
             FrontendError::InvalidContentLength { .. } => InvalidData,
             FrontendError::BodyUtf8 { .. } => InvalidData,
@@ -91,7 +103,7 @@ mod tests {
     use std::env;
     use std::net::IpAddr;
     use serial_test::serial;
-    use crate::http::{backend_socket_addr, BACKEND_HOST_KEY, BACKEND_PORT_KEY};
+    use crate::http::{parse_arguments, BACKEND_HOST_KEY, BACKEND_PORT_KEY};
     use super::*;
 
     #[test]
@@ -104,7 +116,7 @@ mod tests {
         unsafe { env::set_var(BACKEND_HOST_KEY, "not-an-ip"); }
         unsafe { env::remove_var(BACKEND_PORT_KEY); }
 
-        let err = backend_socket_addr().unwrap_err();
+        let err = parse_arguments().unwrap_err();
 
         match err {
             FrontendError::InvalidHost { key, value, .. } => {
