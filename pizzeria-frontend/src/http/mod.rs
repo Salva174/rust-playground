@@ -1,35 +1,28 @@
 mod address;
+pub mod request;
 
 use std::io;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::net::TcpStream;
 use crate::error::FrontendError;
 
 pub use address::{
-    backend_socket_addr, 
-    BACKEND_HOST_KEY, 
+    backend_socket_addr,
+    BACKEND_HOST_KEY,
     BACKEND_PORT_KEY
 };
-
-fn format_http_request(
-    method: &str,
-    path: &str,
-    address: SocketAddr
-) -> String {
-    format!("{method} {path} HTTP/1.1\r
-Host: {address}\r
-\r
-")
-}
+use crate::http::request::RequestBuilder;
 
 pub fn read_pizza_prebuilds() -> io::Result<String> {
-    let addr = address::backend_socket_addr()
+    let addr = backend_socket_addr()
         .map_err(FrontendError::into_io)?;
     let mut stream = TcpStream::connect(addr)?;
-    let method = "GET";
-    let path = "/";
 
-    write!(stream, "{}", format_http_request(method, path, addr))?;
+    let request = RequestBuilder::get()
+        .host(addr.to_string())
+        .build();
+
+    write!(stream, "{}", request)?;
     stream.flush()?;
 
     let body = parse_http_response_body(stream)
@@ -41,10 +34,13 @@ pub fn read_toppings() -> io::Result<String> {
     let addr = backend_socket_addr()
         .map_err(FrontendError::into_io)?;
     let mut stream = TcpStream::connect(addr)?;
-    let method = "GET";
-    let path = "/toppings";
 
-    write!(stream, "{}", format_http_request(method, path, addr))?;
+    let request = RequestBuilder::get()
+        .host(addr.to_string())
+        .path(String::from("/toppings"))
+        .build();
+
+    write!(stream, "{}", request)?;
     stream.flush()?;
 
     let body = parse_http_response_body(stream)
@@ -58,13 +54,16 @@ pub fn send_transaction_record(transaction_record: String) -> io::Result<()> {
     let mut stream = TcpStream::connect(addr)?;
     let transaction_record_length = transaction_record.len();
 
+    let request = RequestBuilder::post()
+        .path(String::from("/transaction"))
+        .host(addr.to_string())
+        .content_type(String::from("text/plain; charset=utf-8"))
+        .content_length(transaction_record_length)
+        .body(transaction_record)
+        .build();
 
-    stream.write_all(format!("POST /transaction HTTP/1.1\r
-Host: {addr}\r
-content-type: text/plain; charset=utf-8\r
-content-length: {transaction_record_length}\r
-\r
-{transaction_record}").as_bytes())?;
+    stream.write_all(request.as_bytes())?;
+
     stream.flush()?;
 
     let mut reader = BufReader::new(stream);
@@ -144,8 +143,6 @@ mod tests {
     use crate::transactions::format_transaction_as_string;
     use std::io::Cursor;
     use std::{env, fs};
-    use std::error::Error;
-    use std::str::FromStr;
     use tempfile::tempdir;
 
     #[test]
@@ -191,22 +188,5 @@ body-text");
 
         // 6) CWD zurück
         env::set_current_dir(old).unwrap();
-    }
-
-    #[test]
-    fn should_format_http_request() -> Result<(), Box<dyn Error>> {
-        let method = "GET";
-        let path = "/";
-        let address= SocketAddr::from_str("127.0.0.1:3333")?;
-
-        let actual_request = format_http_request(method, path, address);
-
-        let expected_request = "GET / HTTP/1.1\r
-Host: 127.0.0.1:3333\r
-\r
-";
-
-        assert_eq!(actual_request, expected_request);
-        Ok(())
     }
 }

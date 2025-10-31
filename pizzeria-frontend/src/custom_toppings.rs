@@ -7,6 +7,7 @@ use crate::error::FrontendError;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
 use crate::http::{backend_socket_addr, read_toppings};
+use crate::http::request::RequestBuilder;
 use crate::ui::{wait_enter, prompt};
 
 // Entfernen nach Nummer oder Name
@@ -132,19 +133,17 @@ fn send_post(path: &str, body: &str) -> io::Result<()> {
     let addr = backend_socket_addr()
         .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
-    let body_bytes = body.as_bytes();
     let body_length = body.as_bytes().len();
 
-    let head = format!("POST {path} HTTP/1.1\r
-Host: {addr}\r
-Content-Type: text/plain; charset=utf-8\r
-Content-Length: {body_length}\r
-Connection: close\r
-\r
-");
+    let request = RequestBuilder::post()
+        .path(String::from(path))
+        .host(addr.to_string())
+        .content_type(String::from("text/plain; charset=utf-8"))
+        .content_length(body_length)
+        .body(String::from(body))
+        .build();
 
-    stream.write_all(head.as_bytes())?;
-    stream.write_all(body_bytes)?;
+    stream.write_all(request.as_bytes())?;
     stream.flush()?;
 
     let mut resp = String::new();
@@ -166,13 +165,12 @@ fn send_delete_topping(name: &str) -> io::Result<()> {
         .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
 
-    let req = format!("DELETE /toppings?name={name_enc} HTTP/1.1\r\n
-Host: {addr}\r\n
-Connection: close\r\n
-\r\n"
-    );
+    let request = RequestBuilder::delete()
+        .path(format!("/toppings?name={name_enc}"))
+        .host(addr.to_string())
+        .build();
 
-    stream.write_all(req.as_bytes())?;
+    stream.write_all(request.as_bytes())?;
     stream.flush()?;
 
     let mut reader = BufReader::new(stream);
@@ -186,12 +184,12 @@ pub fn send_clear_toppings(path: &str) -> io::Result<()> {
         .map_err(FrontendError::into_io)?;
     let mut stream =  TcpStream::connect(addr)?;
 
-    let req = format!("DELETE {path} HTTP/1.1\r\n
-Host: {addr}\r\n
-Connection: close\r\n
-\r\n"
-    );
-    stream.write_all(req.as_bytes())?;
+    let request = RequestBuilder::delete()
+        .path(String::from(path))
+        .host(addr.to_string())
+        .build();
+
+    stream.write_all(request.as_bytes())?;
     stream.flush()?;
 
     let mut reader = BufReader::new(stream);
