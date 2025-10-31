@@ -60,7 +60,7 @@ impl RequestBuilder {
 
     pub fn build(&self) -> String {
         let method = self.method;
-        let path = self.path.as_ref().map(String::as_str).unwrap_or_else(|| "/");
+        let path = self.path.as_deref().unwrap_or("/");
         let host = self.host.as_ref().expect("host should be specified.");
 
 
@@ -80,7 +80,7 @@ Host: {host}\r
         request.push_str("\r\n");
 
         if let Some(body) = self.body.as_ref() {
-            request.push_str(&format!("{body}"))
+            request.push_str(&body.to_string())
         }
 
         request

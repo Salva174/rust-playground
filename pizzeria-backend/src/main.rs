@@ -28,14 +28,12 @@ async fn main() {
         }
     };
 
-
     let listener = tokio::net::TcpListener::bind(address).await
-        .expect(&format!("Failed to bind address {address}"));
+        .unwrap_or_else(|_| panic!("Failed to bind address {address}"));
 
     eprintln!("Server listening at {address}...");
     axum::serve(listener, app).await
         .expect("Error while starting server");
-
 }
 
 async fn root() -> (StatusCode, String) {

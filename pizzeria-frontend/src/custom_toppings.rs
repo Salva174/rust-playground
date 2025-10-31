@@ -2,8 +2,7 @@ use std::error::Error;
 use std::io;
 use std::io::{BufRead, BufReader, Read, Stdin, Stdout, Write};
 use std::net::TcpStream;
-use crate::{clear_screen, parse_arguments, Arguments};
-use crate::error::FrontendError;
+use crate::{clear_screen, Arguments};
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
 use crate::http::{read_toppings};
@@ -131,7 +130,7 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin, arguments: &Argument
 
 fn send_post(path: &str, body: &str, arguments: &Arguments) -> io::Result<()> {
     let mut stream =  TcpStream::connect(arguments.server_address)?;
-    let body_length = body.as_bytes().len();
+    let body_length = body.len();
 
     let request = RequestBuilder::post()
         .path(String::from(path))
@@ -257,6 +256,6 @@ fn ensure_success_code(code:u16) -> io::Result<()> {
     if (200..300).contains(&code) {
         Ok(())
     } else {
-        Err(io::Error::new(io::ErrorKind::Other, format!("HTTP {code}")))
+        Err(io::Error::other(format!("HTTP {code}")))
     }
 }

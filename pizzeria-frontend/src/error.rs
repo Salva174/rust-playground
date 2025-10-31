@@ -51,7 +51,7 @@ impl Display for FrontendError {
                 write!(f, "Ungültige Adresse '{value}'."),
             FrontendError::NotUnicode { key, ..} =>
                 write!(f, "{key} ist nicht gültiges Unicode."),
-            FrontendError::NotUnicodeArg { .. } =>
+            FrontendError::NotUnicodeArg =>
                 write!(f, "Nicht gültiges Unicode."),
             FrontendError::HttpStatus { code} =>
                 write!(f, "Backend antwortet mit HTTP {code}."),
@@ -59,7 +59,7 @@ impl Display for FrontendError {
                 write!(f, "Ungültige Länge '{value}'."),
             FrontendError::BodyUtf8 { .. } =>
                 write!(f, "Nicht gültiges UTF8."),
-            FrontendError::UnexpectedEof { .. } =>
+            FrontendError::UnexpectedEof =>
                 write!(f, "Unerwartes Ende der Verbindung - Antwort unvollständig.")
         }
     }
@@ -72,11 +72,11 @@ impl Error for FrontendError {
             FrontendError::InvalidPort { source, .. } => Some(source),
             FrontendError::InvalidSocketAddr { source, .. } => Some(source),
             FrontendError::NotUnicode { source, .. } => Some(source),
-            FrontendError::NotUnicodeArg { ..} => None,
+            FrontendError::NotUnicodeArg => None,
             FrontendError::HttpStatus { .. } => None,
             FrontendError::InvalidContentLength { source , .. } => Some(source),
             FrontendError::BodyUtf8 { source, .. } => Some(source),
-            FrontendError::UnexpectedEof { .. } => None,
+            FrontendError::UnexpectedEof => None,
         }
     }
 }
@@ -88,11 +88,11 @@ impl FrontendError {
             FrontendError::InvalidPort { .. } => InvalidInput,
             FrontendError::InvalidSocketAddr { .. } => InvalidInput,
             FrontendError::NotUnicode { .. } => InvalidInput,
-            FrontendError::NotUnicodeArg { .. } => InvalidInput,
+            FrontendError::NotUnicodeArg  => InvalidInput,
             FrontendError::HttpStatus { .. } => Other,
             FrontendError::InvalidContentLength { .. } => InvalidData,
             FrontendError::BodyUtf8 { .. } => InvalidData,
-            FrontendError::UnexpectedEof { .. } => InvalidData,
+            FrontendError::UnexpectedEof  => InvalidData,
         };
         io::Error::new(kind, self)
     }

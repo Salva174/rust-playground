@@ -98,15 +98,14 @@ fn parse_http_response_body(stream: impl Read) -> Result<String, FrontendError> 
             break;      //Header ende
         }
 
-        if let Some((name, value)) = line.split_once(':') {
-            if name.eq_ignore_ascii_case("content-length") {
+        if let Some((name, value)) = line.split_once(':')
+            && name.eq_ignore_ascii_case("content-length") {
                 let len = value.trim().parse::<usize>()
                     .map_err(|error| FrontendError::InvalidContentLength {
                         value: value.trim().to_string(),
                         source: error,
                     })?;
                 content_length = Some(len);
-            }
         }
     }
 
@@ -129,11 +128,7 @@ fn parse_http_response_body(stream: impl Read) -> Result<String, FrontendError> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::append_line_sync;
-    use crate::transactions::format_transaction_as_string;
     use std::io::Cursor;
-    use std::{env, fs};
-    use tempfile::tempdir;
 
     #[test]
     fn test_parse_http_response_body() -> Result<(), Box<dyn std::error::Error>> {

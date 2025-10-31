@@ -247,7 +247,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
     let back_row     = n + 2;
 
     // Menge je Topping (für Mehrfachauswahl)
-    let mut qty = vec![0u32; n];
+    let mut quantity = vec![0u32; n];
     let mut in_buf = [0u8; 64];
 
     loop {
@@ -257,7 +257,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
 
         for (i, t) in available_toppings.iter().enumerate() {
             let marker = if i == selected_row { ">" } else { " " };
-            let qty_str = if qty[i] > 0 { format!("x{}", qty[i]) } else { String::new() };
+            let qty_str = if quantity[i] > 0 { format!("x{}", quantity[i]) } else { String::new() };
 
             table.push(TableRow::new(vec![
                 TableCell::new(marker.into()),
@@ -295,7 +295,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
         // Menütitel + Ausgabe
         let tm = TableMenu::new("Custom Pizza".into(), table);
 
-        let toppings_sum: u32 = qty.iter().enumerate().map(|(i, &q)| q * available_toppings[i].price).sum();
+        let toppings_sum: u32 = quantity.iter().enumerate().map(|(i, &q)| q * available_toppings[i].price).sum();
         let total = base_price + toppings_sum;
 
         let footer = [
@@ -317,8 +317,8 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
                 if selected_row < back_row { selected_row += 1; } else { selected_row = 0; }
             }
             InputEvent::Left => {
-                if selected_row < n && qty[selected_row] > 0 {
-                    qty[selected_row] -= 1;
+                if selected_row < n && quantity[selected_row] > 0 {
+                    quantity[selected_row] -= 1;
                 }
             }
             InputEvent::Back => {
@@ -328,12 +328,12 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
             InputEvent::Enter => {
                 if selected_row < n {
                     // topping hinzufügen
-                    qty[selected_row] += 1;
+                    quantity[selected_row] += 1;
                 } else if selected_row == checkout_row {
                     // Checkout: Zusammenfassung + Preis anzeigen
                     clear_screen(stdout)?;
                     let mut sum_table = Table::new(vec![]);
-                    for (i, &q) in qty.iter().enumerate().filter(|(_, q)| **q > 0) {
+                    for (i, &q) in quantity.iter().enumerate().filter(|(_, q)| **q > 0) {
                         sum_table.push(TableRow::new(vec![
                             TableCell::new(format!("{} x {}", available_toppings[i].name, q)),
                             TableCell::new_with_alignment(format!("{}.00$", available_toppings[i].price * q), Right),
@@ -346,7 +346,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
                         base_price,
                         toppings: {
                             let mut v = Vec::new();
-                            for (i, &q) in qty.iter().enumerate() {
+                            for (i, &q) in quantity.iter().enumerate() {
                                 for _ in 0..q { v.push(available_toppings[i].clone()); }
                             }
                             v
@@ -356,7 +356,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
                     let transaction_line = format_custom_pizza_as_transaction_string(
                         base_price,
                         available_toppings,
-                        &qty,
+                        &quantity,
                         true
                     );
 
@@ -371,7 +371,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
 
                 } else if selected_row == clear_row {
                     // Auswahl zurücksetzen
-                    for q in &mut qty { *q = 0; }
+                    quantity.fill(0)
                 } else {
                     // Back
                     return Ok(None);
