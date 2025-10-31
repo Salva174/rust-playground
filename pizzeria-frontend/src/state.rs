@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::{fs, io};
 use std::io::Stdout;
+use crate::Arguments;
 use crate::table::{Table, TableCell, TableRow};
 use crate::table::Align::Right;
 use crate::table_menu::TableMenu;
@@ -39,14 +40,14 @@ impl State {
         crate::update::select_row(table, sel);
     }
 
-    pub fn refresh_order_menu(&mut self) {
-        if let Ok(catalog) = load_toppings_from_backend() {
+    pub fn refresh_order_menu(&mut self, arguments: &Arguments) {
+        if let Ok(catalog) = load_toppings_from_backend(arguments) {
             self.toppings_catalog = catalog;
         }
 
         let idx = MenuIndex::OrderMenu.as_index();
 
-        match load_prebuilt_pizzas_from_backend(&self.toppings_catalog) {
+        match load_prebuilt_pizzas_from_backend(&self.toppings_catalog, arguments) {
             Ok(pizzas) => {
                 self.prebuilt_pizzas = pizzas;
                 self.menus[idx] = build_order_menu(&self.prebuilt_pizzas);
@@ -85,10 +86,10 @@ impl MenuIndex {
     }
 }
 
-pub fn create_initial_state() -> State {
-    let toppings_catalog = load_toppings_from_backend().unwrap_or_default();
+pub fn create_initial_state(arguments: &Arguments) -> State {
+    let toppings_catalog = load_toppings_from_backend(arguments).unwrap_or_default();
 
-    let (prebuilt_pizzas, order_menu) = match load_prebuilt_pizzas_from_backend(&toppings_catalog) {
+    let (prebuilt_pizzas, order_menu) = match load_prebuilt_pizzas_from_backend(&toppings_catalog, arguments) {
         Ok(pz) => {
             let menu = build_order_menu(&pz);
             (pz, menu)
@@ -150,14 +151,14 @@ pub fn create_initial_state() -> State {
     }
 }
 
-pub fn load_toppings_from_backend() -> io::Result<Vec<Topping>> {
-    let body = read_toppings()?;
+pub fn load_toppings_from_backend(arguments: &Arguments) -> io::Result<Vec<Topping>> {
+    let body = read_toppings(arguments)?;
     parse_toppings(&body)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-pub fn load_prebuilt_pizzas_from_backend(available: &[Topping]) -> io::Result<Vec<Pizza>> {
-    let body = read_pizza_prebuilds()?;
+pub fn load_prebuilt_pizzas_from_backend(available: &[Topping], arguments: &Arguments) -> io::Result<Vec<Pizza>> {
+    let body = read_pizza_prebuilds(arguments)?;
     parse_prebuild_pizza(&body, available)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }

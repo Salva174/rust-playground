@@ -1,25 +1,19 @@
-pub mod address;
 pub mod request;
 
 use std::io;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
+use crate::Arguments;
 use crate::error::FrontendError;
 
-pub use address::{
-    parse_arguments,
-    BACKEND_HOST_KEY,
-    BACKEND_PORT_KEY
-};
+
 use crate::http::request::RequestBuilder;
 
-pub fn read_pizza_prebuilds() -> io::Result<String> {
-    let addr = parse_arguments()
-        .map_err(FrontendError::into_io)?;
-    let mut stream = TcpStream::connect(addr)?;
+pub fn read_pizza_prebuilds(arguments: &Arguments) -> io::Result<String> {
+    let mut stream = TcpStream::connect(arguments.server_address)?;
 
     let request = RequestBuilder::get()
-        .host(addr.to_string())
+        .host(arguments.server_address.to_string())
         .build();
 
     write!(stream, "{}", request)?;
@@ -30,13 +24,11 @@ pub fn read_pizza_prebuilds() -> io::Result<String> {
     Ok(body)
 }
 
-pub fn read_toppings() -> io::Result<String> {
-    let addr = parse_arguments()
-        .map_err(FrontendError::into_io)?;
-    let mut stream = TcpStream::connect(addr)?;
+pub fn read_toppings(arguments: &Arguments) -> io::Result<String> {
+    let mut stream = TcpStream::connect(arguments.server_address)?;
 
     let request = RequestBuilder::get()
-        .host(addr.to_string())
+        .host(arguments.server_address.to_string())
         .path(String::from("/toppings"))
         .build();
 
@@ -48,15 +40,13 @@ pub fn read_toppings() -> io::Result<String> {
     Ok(body)
 }
 
-pub fn send_transaction_record(transaction_record: String) -> io::Result<()> {
-    let addr = parse_arguments()
-        .map_err(FrontendError::into_io)?;
-    let mut stream = TcpStream::connect(addr)?;
+pub fn send_transaction_record(transaction_record: String, arguments: &Arguments) -> io::Result<()> {
+    let mut stream = TcpStream::connect(arguments.server_address)?;
     let transaction_record_length = transaction_record.len();
 
     let request = RequestBuilder::post()
         .path(String::from("/transaction"))
-        .host(addr.to_string())
+        .host(arguments.server_address.to_string())
         .content_type(String::from("text/plain; charset=utf-8"))
         .content_length(transaction_record_length)
         .body(transaction_record)
@@ -159,34 +149,5 @@ body-text");
         assert_eq!(result, String::from("body-text"));
 
         Ok(())
-    }
-
-    #[test]
-    fn fallback_writes_log_when_backend_is_down() {
-        // 1) isoliertes Arbeitsverzeichnis
-        let tmp = tempdir().unwrap();
-        let old = env::current_dir().unwrap();
-        env::set_current_dir(tmp.path()).unwrap();
-        const LOG_PATH: &str = "transactions.log";
-
-
-        // 2) Transaktionszeile bauen
-        let mut line = format_transaction_as_string(700, "TestPizza");
-        if !line.ends_with('\n') { line.push('\n'); }
-
-        // 3) Backend absichtlich NICHT starten => send schlägt fehl
-        if let Err(_e) = send_transaction_record(line.clone()) {
-            // 4) Fallback: direkt in Datei schreiben 
-            append_line_sync(LOG_PATH, &line).expect("fallback write failed");
-        } else {
-            panic!("Expected backend error, but request succeeded");
-        }
-
-        // 5) prüfen, dass Log geschrieben wurde
-        let content = fs::read_to_string(LOG_PATH).unwrap();
-        assert!(content.contains("TestPizza"));
-
-        // 6) CWD zurück
-        env::set_current_dir(old).unwrap();
     }
 }

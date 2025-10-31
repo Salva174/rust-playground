@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::os::fd::AsRawFd;
 use pizzeria_frontend::input::{read_input, InputEvent};
+use pizzeria_frontend::parse_arguments;
 use pizzeria_frontend::state::{create_initial_state, process_transaction_fallbacks};
 use pizzeria_frontend::render::render;
 use pizzeria_frontend::update::update;
@@ -9,11 +10,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();
     let mut stdin = std::io::stdin();
 
+    let arguments = parse_arguments()?;
+
     let mut in_buffer = [0u8; 64];
 
     let termios = setup_terminal()?;
 
-    let mut state = create_initial_state();
+    let mut state = create_initial_state(&arguments);
     render(&mut stdout, &state)?;
 
     loop {
@@ -21,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let InputEvent::Unknown { input } = &input {
             writeln!(stdout, "{input:?}")?;
         } else {
-            let exit = update(input, &mut state, &mut stdout, &mut stdin);
+            let exit = update(input, &mut state, &mut stdout, &mut stdin, &arguments);
             if exit {
                 break;
             }

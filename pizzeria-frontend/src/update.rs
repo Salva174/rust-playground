@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::io::{Stdin, Stdout, Write};
-use crate::clear_screen;
+use crate::{clear_screen, Arguments};
 use crate::table::{Table, TableCell, TableRow};
 use crate::table::Align::Right;
 use crate::table_menu::TableMenu;
@@ -13,20 +13,20 @@ use crate::state::{MenuIndex, State};
 use crate::transactions::{format_custom_pizza_as_transaction_string, format_transaction_as_string};
 use crate::ui::{confirm, wait_enter};
 
-pub fn update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin) -> bool {
+pub fn update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin, arguments: &Arguments) -> bool {
 
     if let InputEvent::Exit = input {
         return true;
     }
 
     match state.current_menu {
-        MenuIndex::MainMenu => main_menu_update(input, state),
-        MenuIndex::EditToppingsMenu => edit_toppings_menu_update(input, state, stdout, stdin),
-        MenuIndex::OrderMenu => order_menu_update(input, state, stdout, stdin),
+        MenuIndex::MainMenu => main_menu_update(input, state, arguments),
+        MenuIndex::EditToppingsMenu => edit_toppings_menu_update(input, state, stdout, stdin, arguments),
+        MenuIndex::OrderMenu => order_menu_update(input, state, stdout, stdin, arguments),
     }
 }
 
-fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin) -> bool {
+fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin, arguments: &Arguments) -> bool {
 
     match input {
         InputEvent::Up => {
@@ -60,7 +60,7 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
             if sel_row == custom_row {
                 let base_price = 6;
 
-                match order_custom_pizza(stdout, stdin, &state.toppings_catalog, base_price) {
+                match order_custom_pizza(stdout, stdin, &state.toppings_catalog, base_price, arguments) {
                     Ok(Some(line)) => {
                         state.pending_fallbacks.push(line);
                     }
@@ -71,7 +71,7 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
                     }
                 }
 
-                if let Err(e) = order_custom_pizza(stdout, stdin, &state.toppings_catalog, base_price) {
+                if let Err(e) = order_custom_pizza(stdout, stdin, &state.toppings_catalog, base_price, arguments) {
                     writeln!(stdout, "Fehler im Custom-Pizza-Dialog: {e}.").ok();
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
                 }
@@ -81,7 +81,7 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
                 let price_cents = p.total_price() * 100;
                 let transaction_string = format_transaction_as_string(price_cents, &p.name);
 
-                if let Err(e) = send_transaction_record(transaction_string.clone()) {
+                if let Err(e) = send_transaction_record(transaction_string.clone(), arguments) {
                     writeln!(stdout, "Warnung: Konnte Transaktion nicht an Backend senden: {e}").ok();
                     state.pending_fallbacks.push(transaction_string);
                 }
@@ -99,7 +99,7 @@ fn order_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, 
     false
 }
 
-fn main_menu_update(input: InputEvent, state: &mut State) -> bool {
+fn main_menu_update(input: InputEvent, state: &mut State, arguments: &Arguments) -> bool {
 
     match input {
         InputEvent::Up => {
@@ -123,7 +123,7 @@ fn main_menu_update(input: InputEvent, state: &mut State) -> bool {
         InputEvent::Enter => {
             match state.selected_row() {
                 0 => {
-                    state.refresh_order_menu();
+                    state.refresh_order_menu(arguments);
                     state.current_menu = MenuIndex::OrderMenu;
                     state.apply_selection_marker();
                 },
@@ -146,7 +146,7 @@ fn main_menu_update(input: InputEvent, state: &mut State) -> bool {
     false
 }
 
-fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin) -> bool {
+fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut Stdout, stdin: &mut Stdin, arguments: &Arguments) -> bool {
 
     match input {
         InputEvent::Up => {
@@ -172,13 +172,13 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
             match state.selected_row() {
                 0 => {
                     let _ = clear_screen(stdout);
-                    if let Err(e) = add_toppings(stdout, stdin) {
+                    if let Err(e) = add_toppings(stdout, stdin, arguments) {
                         writeln!(stdout, "Fehler: {e}").ok();
                     }
                 }
                 1 => {
                     let _ = clear_screen(stdout);
-                    if let Err(e) = remove_topping(stdout, stdin, file_path) {
+                    if let Err(e) = remove_topping(stdout, stdin, file_path, arguments) {
                         writeln!(stdout, "Fehler {e}").ok();
                     }
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
@@ -186,7 +186,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
                 }
                 2 => {
                     let _ = clear_screen(stdout);
-                    if let Err(e) = list_toppings_from_backend(stdout) {
+                    if let Err(e) = list_toppings_from_backend(stdout, arguments) {
                         writeln!(stdout, "Fehler {e}").ok();
                     }
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
@@ -196,7 +196,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
 
                     match confirm(stdin, stdout, "\n\x1b[34mListe wirklich löschen?\x1b[0m (\x1b[32mY\x1b[0m/\x1b[31mN\x1b[0m): ") {
                         Ok(true) => {
-                            if let Err(e) = send_clear_toppings("/toppings/clear") {
+                            if let Err(e) = send_clear_toppings("/toppings/clear", arguments) {
                                 writeln!(stdout, "Fehler: {e}").ok();
                             } else {
                                 writeln!(stdout, "\x1b[1;35mDatei geleert. \x1b[0m").ok();
@@ -239,7 +239,7 @@ pub fn select_row(table: &mut Table, selected_row: usize) {
     }
 }
 
-pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_toppings: &[Topping], base_price: u32, ) -> Result<Option<String>, Box<dyn Error>> {
+pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_toppings: &[Topping], base_price: u32, arguments: &Arguments) -> Result<Option<String>, Box<dyn Error>> {
     let mut selected_row: usize = 0;
     let n = available_toppings.len();
     let checkout_row = n;
@@ -360,7 +360,7 @@ pub fn order_custom_pizza(stdout: &mut Stdout, stdin:  &mut Stdin, available_top
                         true
                     );
 
-                    if let Err(e) = send_transaction_record(transaction_line.clone()) {
+                    if let Err(e) = send_transaction_record(transaction_line.clone(), arguments) {
                         writeln!(stdout, "Warnung: Konnte Transaktion nicht an Backend senden: {e}").ok();
                         wait_enter(stdout, stdin, "\n[OK mit Enter]")?;
                         return Ok(Some(transaction_line));

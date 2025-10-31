@@ -2,18 +2,18 @@ use std::error::Error;
 use std::io;
 use std::io::{BufRead, BufReader, Read, Stdin, Stdout, Write};
 use std::net::TcpStream;
-use crate::clear_screen;
+use crate::{clear_screen, parse_arguments, Arguments};
 use crate::error::FrontendError;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
-use crate::http::{parse_arguments, read_toppings};
+use crate::http::{read_toppings};
 use crate::http::request::RequestBuilder;
 use crate::ui::{wait_enter, prompt};
 
 // Entfernen nach Nummer oder Name
-pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io::Result<()> {
+pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str, arguments: &Arguments) -> io::Result<()> {
 
-    let body = read_toppings()?;
+    let body = read_toppings(arguments)?;
 
     list_toppings_from_str(stdout, &body)?;
 
@@ -64,11 +64,11 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
         }
     };
 
-        send_delete_topping(&name_to_delete)?;
+        send_delete_topping(&name_to_delete, arguments)?;
         clear_screen(stdout).expect("Should clear screen.");
     
         //neu laden und anzeigen
-        let body_after = read_toppings()?;
+        let body_after = read_toppings(arguments)?;
         list_toppings_from_str(stdout, &body_after)?;
 
         writeln!(stdout, "\x1b[1;31mEntfernt:\x1b[0m \x1b[1m{name}\x1b[0m", name = name_to_delete)?;
@@ -77,7 +77,7 @@ pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str) -> io
     Ok(())
 }
 
-pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dyn Error>> {
+pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin, arguments: &Arguments) -> Result<(), Box<dyn Error>> {
 
     loop {
         clear_screen(stdout)?;
@@ -115,7 +115,7 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
         let line = format!("{}#{}", topping_name, topping_price);
         // if !line.ends_with('\n') { line.push('\n'); }
 
-        send_post("/toppings", &line)?;
+        send_post("/toppings", &line, arguments)?;
 
         writeln!(stdout, "\nErfolgreich hinzugefügt: \x1b[1;32m{} {}\x1b[0m", topping_name, topping_price)?;
         stdout.flush()?;
@@ -129,15 +129,13 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dy
     Ok(())
 }
 
-fn send_post(path: &str, body: &str) -> io::Result<()> {
-    let addr = parse_arguments()
-        .map_err(FrontendError::into_io)?;
-    let mut stream =  TcpStream::connect(addr)?;
+fn send_post(path: &str, body: &str, arguments: &Arguments) -> io::Result<()> {
+    let mut stream =  TcpStream::connect(arguments.server_address)?;
     let body_length = body.as_bytes().len();
 
     let request = RequestBuilder::post()
         .path(String::from(path))
-        .host(addr.to_string())
+        .host(arguments.server_address.to_string())
         .content_type(String::from("text/plain; charset=utf-8"))
         .content_length(body_length)
         .body(String::from(body))
@@ -156,18 +154,16 @@ fn send_post(path: &str, body: &str) -> io::Result<()> {
     ensure_success_code(code)
 }
 
-fn send_delete_topping(name: &str) -> io::Result<()> {
+fn send_delete_topping(name: &str, arguments: &Arguments) -> io::Result<()> {
     use std::io::Write;
     use std::net::TcpStream;
 
     let name_enc = urlencoding::encode(name);
-    let addr = parse_arguments()
-        .map_err(FrontendError::into_io)?;
-    let mut stream =  TcpStream::connect(addr)?;
+    let mut stream =  TcpStream::connect(arguments.server_address)?;
 
     let request = RequestBuilder::delete()
         .path(format!("/toppings?name={name_enc}"))
-        .host(addr.to_string())
+        .host(arguments.server_address.to_string())
         .build();
 
     stream.write_all(request.as_bytes())?;
@@ -179,14 +175,12 @@ fn send_delete_topping(name: &str) -> io::Result<()> {
     ensure_success_code(code)
 }
 
-pub fn send_clear_toppings(path: &str) -> io::Result<()> {
-    let addr = parse_arguments()
-        .map_err(FrontendError::into_io)?;
-    let mut stream =  TcpStream::connect(addr)?;
+pub fn send_clear_toppings(path: &str, arguments: &Arguments) -> io::Result<()> {
+    let mut stream =  TcpStream::connect(arguments.server_address)?;
 
     let request = RequestBuilder::delete()
         .path(String::from(path))
-        .host(addr.to_string())
+        .host(arguments.server_address.to_string())
         .build();
 
     stream.write_all(request.as_bytes())?;
@@ -233,8 +227,8 @@ fn list_toppings_from_str(stdout: &mut Stdout, content: &str) -> io::Result<()> 
     Ok(())
 }
 
-pub fn list_toppings_from_backend(stdout: &mut Stdout) -> io::Result<()> {
-    let body = read_toppings()?;
+pub fn list_toppings_from_backend(stdout: &mut Stdout, arguments: &Arguments) -> io::Result<()> {
+    let body = read_toppings(arguments)?;
     list_toppings_from_str(stdout, &body)
 }
 

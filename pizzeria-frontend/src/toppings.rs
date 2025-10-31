@@ -3,10 +3,10 @@ use std::io;
 use std::io::{BufWriter, BufRead, Stdin, Stdout, Write};
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
-use crate::clear_screen;
+use crate::{clear_screen, Arguments};
 use crate::custom_toppings::list_toppings_from_backend;
 
-pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<dyn std::error::Error>> {
+pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin, arguments: &Arguments) -> Result<(), Box<dyn std::error::Error>> {
 
     writeln!(stdout, "\x1b[1;31mToppings Editor\x1b[0m <Topping-Name> <Preis>: ")?;
     stdout.flush()?;
@@ -56,7 +56,7 @@ pub fn edit_toppings(stdout: &mut Stdout, stdin: &mut Stdin) -> Result<(), Box<d
 
         if choice == "t" {
             clear_screen(stdout)?;
-            list_toppings_from_backend(stdout)?;
+            list_toppings_from_backend(stdout, arguments)?;
             continue;
         }
 

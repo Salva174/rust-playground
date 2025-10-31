@@ -103,7 +103,7 @@ mod tests {
     use std::env;
     use std::net::IpAddr;
     use serial_test::serial;
-    use crate::http::{parse_arguments, BACKEND_HOST_KEY, BACKEND_PORT_KEY};
+    use crate::{parse_arguments, BACKEND_HOST_KEY, BACKEND_PORT_KEY};
     use super::*;
 
     #[test]
