@@ -1,7 +1,8 @@
 use std::io::Write;
-use std::{fs, io};
+use std::fs;
 use std::io::Stdout;
 use crate::Arguments;
+use crate::error::FrontendError;
 use crate::table::{Table, TableCell, TableRow};
 use crate::table::Align::Right;
 use crate::table_menu::TableMenu;
@@ -151,28 +152,28 @@ pub fn create_initial_state(arguments: &Arguments) -> State {
     }
 }
 
-pub fn load_toppings_from_backend(arguments: &Arguments) -> io::Result<Vec<Topping>> {
+pub fn load_toppings_from_backend(arguments: &Arguments) -> Result<Vec<Topping>, FrontendError> {
     let body = read_toppings(arguments)?;
-    parse_toppings(&body)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    let toppings = parse_toppings(&body)?;
+    Ok(toppings)
 }
 
-pub fn load_prebuilt_pizzas_from_backend(available: &[Topping], arguments: &Arguments) -> io::Result<Vec<Pizza>> {
+pub fn load_prebuilt_pizzas_from_backend(available: &[Topping], arguments: &Arguments) -> Result<Vec<Pizza>, FrontendError> {
     let body = read_pizza_prebuilds(arguments)?;
-    parse_prebuild_pizza(&body, available)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    let prebuild_pizza = parse_prebuild_pizza(&body, available)?;
+    Ok(prebuild_pizza)
 }
 
-pub fn load_toppings_from_file(path: &str) -> io::Result<Vec<Topping>> {
+pub fn load_toppings_from_file(path: &str) -> Result<Vec<Topping>, FrontendError> {
     let content = fs::read_to_string(path)?;
-    parse_toppings(&content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    let toppings = parse_toppings(&content)?;
+    Ok(toppings)
 }
 
-pub fn load_prebuilt_pizzas_from_file(path: &str, available:  &[Topping]) -> io::Result<Vec<Pizza>> {
+pub fn load_prebuilt_pizzas_from_file(path: &str, available:  &[Topping]) -> Result<Vec<Pizza>, FrontendError> {
     let content = fs::read_to_string(path)?;
-    parse_prebuild_pizza(&content, available)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    let prebuild_pizza = parse_prebuild_pizza(&content, available)?;
+    Ok(prebuild_pizza)
 }
 
 pub fn build_order_menu(prebuilt: &[Pizza]) -> TableMenu {

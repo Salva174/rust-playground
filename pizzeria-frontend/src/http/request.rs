@@ -1,3 +1,6 @@
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+
 pub struct RequestBuilder {
     method: &'static str,
     path: Option<String>,
@@ -6,6 +9,22 @@ pub struct RequestBuilder {
     content_length: Option<usize>,
     body: Option<String>,
 }
+
+#[derive(Debug, PartialEq)]
+pub enum RequestBuildError {
+    MissingHost
+}
+
+impl Display for RequestBuildError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RequestBuildError::MissingHost =>
+            write!(f, "missing required field: host")
+        }
+    }
+}
+
+impl Error for RequestBuildError {}
 
 impl RequestBuilder {
 
@@ -58,10 +77,10 @@ impl RequestBuilder {
         self
     }
 
-    pub fn build(&self) -> String {
+    pub fn build(&self) -> Result<String, RequestBuildError> {
         let method = self.method;
         let path = self.path.as_deref().unwrap_or("/");
-        let host = self.host.as_ref().expect("host should be specified.");
+        let host = self.host.as_ref().ok_or(RequestBuildError::MissingHost)?;
 
 
         let mut request = format!("{method} {path} HTTP/1.1\r
@@ -83,16 +102,17 @@ Host: {host}\r
             request.push_str(&body.to_string())
         }
 
-        request
+        Ok(request)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::http::request::RequestBuilder;
+    use std::error::Error;
+    use crate::http::request::{RequestBuildError, RequestBuilder};
 
     #[test]
-    fn test() {
+    fn test() -> Result<(), Box<dyn Error>>{
 
         let request = RequestBuilder::post()
             .path(String::from("/foobar"))
@@ -100,7 +120,7 @@ mod tests {
             .content_type(String::from("text/plain; charset=utf-8"))
             .content_length(125)
             .body(String::from("ABCDEF"))
-            .build();
+            .build()?;
 
         let expected_request = "POST /foobar HTTP/1.1\r
 Host: 1.2.3.4:3333\r
@@ -109,57 +129,52 @@ Content-Length: 125\r
 Connection: close\r
 \r
 ABCDEF";
-        assert_eq!(request, expected_request)
-
+        assert_eq!(request, expected_request);
+        Ok(())
     }
 
     #[test]
-    fn test_that_default_path_is_root() {
+    fn test_that_default_path_is_root() -> Result<(), Box<dyn Error>> {
 
         let request = RequestBuilder::post()
             .host(String::from("1.2.3.4:3333"))
-            .build();
+            .build()?;
 
         let expected_request = "POST / HTTP/1.1\r
 Host: 1.2.3.4:3333\r
 Connection: close\r
 \r
 ";
-        assert_eq!(request, expected_request)
-
+        assert_eq!(request, expected_request);
+        Ok(())
     }
 
     #[test]
-    fn test_that_default_method_is_get() {
+    fn test_that_default_method_is_get() -> Result<(), Box<dyn Error>> {
 
         let request = RequestBuilder::get()
             .path(String::from("/foobar"))
             .host(String::from("1.2.3.4:3333"))
-            .build();
+            .build()
+            .expect("build failed");
 
         let expected_request = "GET /foobar HTTP/1.1\r
 Host: 1.2.3.4:3333\r
 Connection: close\r
 \r
 ";
-        assert_eq!(request, expected_request)
-
+        assert_eq!(request, expected_request);
+        Ok(())
     }
 
     #[test]
-    #[should_panic]
-    fn test_that_builder_panics_with_no_host() {
+    fn test_that_builder_panics_with_no_host() -> Result<(), Box<dyn Error>> {
 
         let request = RequestBuilder::post()
             .path(String::from("/foobar"))
             .build();
 
-        let expected_request = "POST /foobar HTTP/1.1\r
-Host: 1.2.3.4:3333\r
-Connection: close\r
-\r
-";
-        assert_eq!(request, expected_request)
-
+        assert_eq!(request, Err(RequestBuildError::MissingHost));
+        Ok(())
     }
 }
