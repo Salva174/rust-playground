@@ -179,7 +179,7 @@ fn edit_toppings_menu_update(input: InputEvent, state: &mut State, stdout: &mut 
                 1 => {
                     let _ = clear_screen(stdout);
                     if let Err(e) = remove_topping(stdout, stdin, file_path, arguments) {
-                        writeln!(stdout, "Fehler {e}").ok();
+                        writeln!(stdout, "Fehler:: {e}").ok();
                     }
                     wait_enter(stdout, stdin, "\n[Weiter mit Enter]").ok();
                     clear_screen(stdout).ok();

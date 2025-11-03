@@ -1,6 +1,6 @@
 pub mod request;
 
-use std::io;
+use std::error::Error;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use crate::Arguments;
@@ -9,39 +9,42 @@ use crate::error::FrontendError;
 
 use crate::http::request::RequestBuilder;
 
-pub fn read_pizza_prebuilds(arguments: &Arguments) -> io::Result<String> {
-    let mut stream = TcpStream::connect(arguments.server_address)?;
+pub fn read_pizza_prebuilds(arguments: &Arguments) -> Result<String, FrontendError> {
+    let mut stream = TcpStream::connect(arguments.server_address)
+        .map_err(|_e| FrontendError::Connect)?;
 
     let request = RequestBuilder::get()
         .host(arguments.server_address.to_string())
-        .build();
+        .build()?;
 
-    write!(stream, "{}", request)?;
+    stream.write_all(request.as_bytes())?;
     stream.flush()?;
 
-    let body = parse_http_response_body(stream)
-        .map_err(FrontendError::into_io)?;
+    let body = parse_http_response_body(stream)?;
+
     Ok(body)
 }
 
-pub fn read_toppings(arguments: &Arguments) -> io::Result<String> {
-    let mut stream = TcpStream::connect(arguments.server_address)?;
+pub fn read_toppings(arguments: &Arguments) -> Result<String, FrontendError> {
+    let mut stream = TcpStream::connect(arguments.server_address)
+        .map_err(|_e| FrontendError::Connect)?;
 
     let request = RequestBuilder::get()
         .host(arguments.server_address.to_string())
         .path(String::from("/toppings"))
-        .build();
+        .build()?;
 
-    write!(stream, "{}", request)?;
+    stream.write_all(request.as_bytes())?;
+    // write!(stream, "{:?}", request)?;
     stream.flush()?;
 
-    let body = parse_http_response_body(stream)
-        .map_err(FrontendError::into_io)?;
+    let body = parse_http_response_body(stream)?;
     Ok(body)
 }
 
-pub fn send_transaction_record(transaction_record: String, arguments: &Arguments) -> io::Result<()> {
-    let mut stream = TcpStream::connect(arguments.server_address)?;
+pub fn send_transaction_record(transaction_record: String, arguments: &Arguments) -> Result<(), Box<dyn Error>> {
+    let mut stream = TcpStream::connect(arguments.server_address)
+        .map_err(|_e| FrontendError::Connect)?;
     let transaction_record_length = transaction_record.len();
 
     let request = RequestBuilder::post()
@@ -50,7 +53,7 @@ pub fn send_transaction_record(transaction_record: String, arguments: &Arguments
         .content_type(String::from("text/plain; charset=utf-8"))
         .content_length(transaction_record_length)
         .body(transaction_record)
-        .build();
+        .build()?;
 
     stream.write_all(request.as_bytes())?;
 
@@ -67,14 +70,11 @@ pub fn send_transaction_record(transaction_record: String, arguments: &Arguments
 
     if !(200..300).contains(&code) {
         return Err(
-            FrontendError::HttpStatus { code }.into_io(),
+            FrontendError::HttpStatus { code }.into(),
         );
     }
 
-    let _ = parse_http_response_body(reader)
-        .map_err(FrontendError::into_io)?; //receive empty body to avoid connection closing before server responded
-
-    //todo: validate response status code is successful
+    let _ = parse_http_response_body(reader)?; //receive empty body to avoid connection closing before server responded
 
     Ok(())
 }

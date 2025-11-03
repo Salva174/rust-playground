@@ -2,10 +2,15 @@ use std::env::VarError;
 use std::error::Error;
 use std::{fmt, io};
 use std::fmt::{Display, Formatter};
-use std::io::ErrorKind::{InvalidData, InvalidInput, Other};
 use std::net::AddrParseError;
 use std::num::ParseIntError;
 use std::string::FromUtf8Error;
+use crate::http::request::RequestBuildError;
+
+// pub struct FrontendError2 {
+//     message: String,
+//     kind: FrontendError
+// }
 
 #[derive(Debug)]
 pub enum FrontendError {
@@ -38,6 +43,10 @@ pub enum FrontendError {
         source: FromUtf8Error
     },
     UnexpectedEof,
+    Parse { message: String },
+    Io { source: io::Error },
+    Connect,
+    RequestBuild { source: RequestBuildError },
 }
 
 impl Display for FrontendError {
@@ -60,7 +69,15 @@ impl Display for FrontendError {
             FrontendError::BodyUtf8 { .. } =>
                 write!(f, "Nicht gültiges UTF8."),
             FrontendError::UnexpectedEof =>
-                write!(f, "Unerwartes Ende der Verbindung - Antwort unvollständig.")
+                write!(f, "Unerwartes Ende der Verbindung - Antwort unvollständig."),
+            FrontendError::Parse { message} =>
+                write!(f, "Parse-Fehler: {message}"),
+            FrontendError::Io { .. } =>
+                write!(f, "I/O-Fehler"),
+            FrontendError::Connect =>
+                write!(f, "Connect"),
+            FrontendError::RequestBuild { .. } =>
+                write!(f, "Fehler beim Bauen der HTTP-Anfrage"),
         }
     }
 }
@@ -77,26 +94,30 @@ impl Error for FrontendError {
             FrontendError::InvalidContentLength { source , .. } => Some(source),
             FrontendError::BodyUtf8 { source, .. } => Some(source),
             FrontendError::UnexpectedEof => None,
+            FrontendError::Parse { .. }  => None,
+            FrontendError::Io { source} => Some(source),
+            FrontendError::Connect => None,
+            FrontendError::RequestBuild { source, .. } => Some(source),
         }
     }
 }
 
-impl FrontendError {
-    pub fn into_io(self) -> io::Error {
-        let kind = match self {
-            FrontendError::InvalidHost { .. } => InvalidInput,
-            FrontendError::InvalidPort { .. } => InvalidInput,
-            FrontendError::InvalidSocketAddr { .. } => InvalidInput,
-            FrontendError::NotUnicode { .. } => InvalidInput,
-            FrontendError::NotUnicodeArg  => InvalidInput,
-            FrontendError::HttpStatus { .. } => Other,
-            FrontendError::InvalidContentLength { .. } => InvalidData,
-            FrontendError::BodyUtf8 { .. } => InvalidData,
-            FrontendError::UnexpectedEof  => InvalidData,
-        };
-        io::Error::new(kind, self)
+impl From<io::Error> for FrontendError {
+    fn from(value: io::Error) -> Self {
+        FrontendError::Io { source: value }
     }
 }
+
+impl From<String> for FrontendError {
+    fn from(s: String) -> Self { FrontendError::Parse { message: s}}
+}
+
+impl From<RequestBuildError> for FrontendError {
+    fn from(value: RequestBuildError) -> Self {
+        FrontendError::RequestBuild { source: value }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

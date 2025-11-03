@@ -3,6 +3,7 @@ use std::io;
 use std::io::{BufRead, BufReader, Read, Stdin, Stdout, Write};
 use std::net::TcpStream;
 use crate::{clear_screen, Arguments};
+use crate::error::FrontendError;
 use crate::table::{Align, Table, TableCell, TableRow};
 use crate::table_menu::TableMenu;
 use crate::http::{read_toppings};
@@ -10,7 +11,7 @@ use crate::http::request::RequestBuilder;
 use crate::ui::{wait_enter, prompt};
 
 // Entfernen nach Nummer oder Name
-pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str, arguments: &Arguments) -> io::Result<()> {
+pub fn remove_topping(stdout: &mut Stdout, stdin: &mut Stdin, _path: &str, arguments: &Arguments) -> Result<(), Box<dyn Error>> {
 
     let body = read_toppings(arguments)?;
 
@@ -128,8 +129,9 @@ pub fn add_toppings(stdout: &mut Stdout, stdin: &mut Stdin, arguments: &Argument
     Ok(())
 }
 
-fn send_post(path: &str, body: &str, arguments: &Arguments) -> io::Result<()> {
-    let mut stream =  TcpStream::connect(arguments.server_address)?;
+fn send_post(path: &str, body: &str, arguments: &Arguments) -> Result<(), Box<dyn Error>> {
+    let mut stream =  TcpStream::connect(arguments.server_address)
+        .map_err(|_e| FrontendError::Connect)?;
     let body_length = body.len();
 
     let request = RequestBuilder::post()
@@ -138,7 +140,7 @@ fn send_post(path: &str, body: &str, arguments: &Arguments) -> io::Result<()> {
         .content_type(String::from("text/plain; charset=utf-8"))
         .content_length(body_length)
         .body(String::from(body))
-        .build();
+        .build()?;
 
     stream.write_all(request.as_bytes())?;
     stream.flush()?;
@@ -153,17 +155,18 @@ fn send_post(path: &str, body: &str, arguments: &Arguments) -> io::Result<()> {
     ensure_success_code(code)
 }
 
-fn send_delete_topping(name: &str, arguments: &Arguments) -> io::Result<()> {
+fn send_delete_topping(name: &str, arguments: &Arguments) -> Result<(), Box<dyn Error>> {
     use std::io::Write;
     use std::net::TcpStream;
 
     let name_enc = urlencoding::encode(name);
-    let mut stream =  TcpStream::connect(arguments.server_address)?;
+    let mut stream =  TcpStream::connect(arguments.server_address)
+        .map_err(|_e| FrontendError::Connect)?;
 
     let request = RequestBuilder::delete()
         .path(format!("/toppings?name={name_enc}"))
         .host(arguments.server_address.to_string())
-        .build();
+        .build()?;
 
     stream.write_all(request.as_bytes())?;
     stream.flush()?;
@@ -174,13 +177,14 @@ fn send_delete_topping(name: &str, arguments: &Arguments) -> io::Result<()> {
     ensure_success_code(code)
 }
 
-pub fn send_clear_toppings(path: &str, arguments: &Arguments) -> io::Result<()> {
-    let mut stream =  TcpStream::connect(arguments.server_address)?;
+pub fn send_clear_toppings(path: &str, arguments: &Arguments) -> Result<(), Box<dyn Error>> {
+    let mut stream =  TcpStream::connect(arguments.server_address)
+        .map_err(|_e| FrontendError::Connect)?;
 
     let request = RequestBuilder::delete()
         .path(String::from(path))
         .host(arguments.server_address.to_string())
-        .build();
+        .build()?;
 
     stream.write_all(request.as_bytes())?;
     stream.flush()?;
@@ -226,9 +230,9 @@ fn list_toppings_from_str(stdout: &mut Stdout, content: &str) -> io::Result<()> 
     Ok(())
 }
 
-pub fn list_toppings_from_backend(stdout: &mut Stdout, arguments: &Arguments) -> io::Result<()> {
+pub fn list_toppings_from_backend(stdout: &mut Stdout, arguments: &Arguments) -> Result<(), FrontendError> {
     let body = read_toppings(arguments)?;
-    list_toppings_from_str(stdout, &body)
+    Ok(list_toppings_from_str(stdout, &body)?)
 }
 
 fn http_read_status<R: BufRead>(reader: &mut R) -> io::Result<u16> {
@@ -252,10 +256,10 @@ fn http_read_status<R: BufRead>(reader: &mut R) -> io::Result<u16> {
     Ok(code)
 }
 
-fn ensure_success_code(code:u16) -> io::Result<()> {
+fn ensure_success_code(code:u16) -> Result<(), Box<dyn Error>> {
     if (200..300).contains(&code) {
         Ok(())
     } else {
-        Err(io::Error::other(format!("HTTP {code}")))
+        Err(Box::new(io::Error::other(format!("HTTP {code}"))))
     }
 }
